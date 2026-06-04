@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">PrivateCoach</string>
+    <string name="nav_dashboard">首页</string>
+    <string name="nav_calendar">日历</string>
+    <string name="nav_analysis">分析</string>
+    <string name="nav_history">记录</string>
+    <string name="nav_settings">设置</string>
+    <string name="widget_description">PrivateCoach 训练概览</string>
+</resources>

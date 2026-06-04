@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="pc_background">#0F172A</color>
+    <color name="pc_accent_copper">#D4A574</color>
+    <color name="pc_text_secondary">#8E9BAE</color>
+</resources>

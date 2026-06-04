@@ -1,0 +1,32 @@
+> Task :app:compileDebugKotlin
+e: file:///C:/Users/InformationDS/Desktop/PrivateCoach/app/src/main/java/com/privatecoach/app/core/ai/GeminiApiServiceImpl.kt:51:25 'fun JsonObjectBuilder.putJsonObject(key: String, builderAction: JsonObjectBuilder.() -> Unit): JsonElement?' can't be called in this context by implicit receiver. Use the explicit one if necessary
+e: file:///C:/Users/InformationDS/Desktop/PrivateCoach/app/src/main/java/com/privatecoach/app/core/ai/GeminiApiServiceImpl.kt:51:25 No value passed for parameter 'key'
+e: file:///C:/Users/InformationDS/Desktop/PrivateCoach/app/src/main/java/com/privatecoach/app/core/ai/GeminiApiServiceImpl.kt:55:21 'fun JsonObjectBuilder.putJsonObject(key: String, builderAction: JsonObjectBuilder.() -> Unit): JsonElement?' can't be called in this context by implicit receiver. Use the explicit one if necessary
+e: file:///C:/Users/InformationDS/Desktop/PrivateCoach/app/src/main/java/com/privatecoach/app/core/ai/GeminiApiServiceImpl.kt:55:21 No value passed for parameter 'key'
+e: file:///C:/Users/InformationDS/Desktop/PrivateCoach/app/src/main/java/com/privatecoach/app/core/ai/GeminiApiServiceImpl.kt:57:29 'fun JsonObjectBuilder.putJsonObject(key: String, builderAction: JsonObjectBuilder.() -> Unit): JsonElement?' can't be called in this context by implicit receiver. Use the explicit one if necessary
+e: file:///C:/Users/InformationDS/Desktop/PrivateCoach/app/src/main/java/com/privatecoach/app/core/ai/GeminiApiServiceImpl.kt:57:29 No value passed for parameter 'key'
+e: file:///C:/Users/InformationDS/Desktop/PrivateCoach/app/src/main/java/com/privatecoach/app/core/ai/GeminiApiServiceImpl.kt:58:29 'fun JsonObjectBuilder.putJsonObject(key: String, builderAction: JsonObjectBuilder.() -> Unit): JsonElement?' can't be called in this context by implicit receiver. Use the explicit one if necessary
+e: file:///C:/Users/InformationDS/Desktop/PrivateCoach/app/src/main/java/com/privatecoach/app/core/ai/GeminiApiServiceImpl.kt:58:29 No value passed for parameter 'key'
+e: file:///C:/Users/InformationDS/Desktop/PrivateCoach/app/src/main/java/com/privatecoach/app/core/ai/GeminiApiServiceImpl.kt:83:64 Unresolved reference: jsonObject
+e: file:///C:/Users/InformationDS/Desktop/PrivateCoach/app/src/main/java/com/privatecoach/app/core/ai/GeminiApiServiceImpl.kt:107:25 'fun JsonObjectBuilder.putJsonObject(key: String, builderAction: JsonObjectBuilder.() -> Unit): JsonElement?' can't be called in this context by implicit receiver. Use the explicit one if necessary
+e: file:///C:/Users/InformationDS/Desktop/PrivateCoach/app/src/main/java/com/privatecoach/app/core/ai/GeminiApiServiceImpl.kt:107:25 No value passed for parameter 'key'
+e: file:///C:/Users/InformationDS/Desktop/PrivateCoach/app/src/main/java/com/privatecoach/app/core/ai/GeminiApiServiceImpl.kt:111:21 'fun JsonObjectBuilder.putJsonObject(key: String, builderAction: JsonObjectBuilder.() -> Unit): JsonElement?' can't be called in this context by implicit receiver. Use the explicit one if necessary
+e: file:///C:/Users/InformationDS/Desktop/PrivateCoach/app/src/main/java/com/privatecoach/app/core/ai/GeminiApiServiceImpl.kt:111:21 No value passed for parameter 'key'
+e: file:///C:/Users/InformationDS/Desktop/PrivateCoach/app/src/main/java/com/privatecoach/app/core/ai/GeminiApiServiceImpl.kt:113:29 'fun JsonObjectBuilder.putJsonObject(key: String, builderAction: JsonObjectBuilder.() -> Unit): JsonElement?' can't be called in this context by implicit receiver. Use the explicit one if necessary
+e: file:///C:/Users/InformationDS/Desktop/PrivateCoach/app/src/main/java/com/privatecoach/app/core/ai/GeminiApiServiceImpl.kt:113:29 No value passed for parameter 'key'
+e: file:///C:/Users/InformationDS/Desktop/PrivateCoach/app/src/main/java/com/privatecoach/app/core/ai/GeminiApiServiceImpl.kt:133:64 Unresolved reference: jsonObject
+e: file:///C:/Users/InformationDS/Desktop/PrivateCoach/app/src/main/java/com/privatecoach/app/core/ai/GeminiApiServiceImpl.kt:156:21 'fun JsonObjectBuilder.putJsonObject(key: String, builderAction: JsonObjectBuilder.() -> Unit): JsonElement?' can't be called in this context by implicit receiver. Use the explicit one if necessary
+e: file:///C:/Users/InformationDS/Desktop/PrivateCoach/app/src/main/java/com/privatecoach/app/core/ai/GeminiApiServiceImpl.kt:156:21 No value passed for parameter 'key'
+e: file:///C:/Users/InformationDS/Desktop/PrivateCoach/app/src/main/java/com/privatecoach/app/core/ai/GeminiApiServiceImpl.kt:158:29 'fun JsonObjectBuilder.putJsonObject(key: String, builderAction: JsonObjectBuilder.() -> Unit): JsonElement?' can't be called in this context by implicit receiver. Use the explicit one if necessary
+e: file:///C:/Users/InformationDS/Desktop/PrivateCoach/app/src/main/java/com/privatecoach/app/core/ai/GeminiApiServiceImpl.kt:158:29 No value passed for parameter 'key'
+e: file:///C:/Users/InformationDS/Desktop/PrivateCoach/app/src/main/java/com/privatecoach/app/core/ai/GeminiApiServiceImpl.kt:175:64 Unresolved reference: jsonObject
+e: file:///C:/Users/InformationDS/Desktop/PrivateCoach/app/src/main/java/com/privatecoach/app/ui/screen/record/ConfirmResultScreen.kt:91:49 Unresolved reference: clickable
+e: file:///C:/Users/InformationDS/Desktop/PrivateCoach/app/src/main/java/com/privatecoach/app/ui/screen/record/RecordScreen.kt:194:90 Unresolved reference. None of the following candidates is applicable because of receiver type mismatch: 
+public val Double.dp: Dp defined in androidx.compose.ui.unit
+public val Float.dp: Dp defined in androidx.compose.ui.unit
+public val Int.dp: Dp defined in androidx.compose.ui.unit
+e: file:///C:/Users/InformationDS/Desktop/PrivateCoach/app/src/main/java/com/privatecoach/app/ui/screen/record/RecordUiState.kt:3:37 Unresolved reference: AiParsedResult
+e: file:///C:/Users/InformationDS/Desktop/PrivateCoach/app/src/main/java/com/privatecoach/app/ui/screen/record/RecordUiState.kt:13:23 Unresolved reference: AiParsedResult
+
+> Task :app:compileDebugKotlin FAILED
+
