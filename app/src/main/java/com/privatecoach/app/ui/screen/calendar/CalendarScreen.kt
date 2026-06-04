@@ -319,7 +319,7 @@ fun CalendarScreen(
                                         maxLines = 2,
                                         overflow = TextOverflow.Ellipsis
                                     )
-                                    workout.feeling?.let { feel ->
+                                    workout.exercises.firstOrNull()?.feeling?.let { feel ->
                                         Text(
                                             "感受: ${feel.toChinese()}",
                                             style = MaterialTheme.typography.labelSmall,

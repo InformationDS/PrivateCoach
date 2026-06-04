@@ -23,7 +23,7 @@ import com.privatecoach.app.data.local.entity.WorkoutEntity
         TrainingTemplateEntity::class,
         TemplateExerciseEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

@@ -35,6 +35,10 @@ interface WorkoutDao {
     fun getRecentWorkouts(limit: Int): Flow<List<WorkoutWithExercises>>
 
     @Transaction
+    @Query("SELECT * FROM workouts WHERE date = :date ORDER BY created_at DESC LIMIT 1")
+    suspend fun getWorkoutByDate(date: LocalDate): WorkoutWithExercises?
+
+    @Transaction
     @Query("SELECT * FROM workouts WHERE id = :workoutId")
     suspend fun getWorkoutByIdOnce(workoutId: Long): WorkoutWithExercises?
 
@@ -111,4 +115,13 @@ interface WorkoutDao {
         ORDER BY w.date ASC
     """)
     suspend fun getTrainingFrequency(startDate: LocalDate, endDate: LocalDate): List<TrainingFrequencyPoint>
+
+    @Query("""
+        SELECT e.name, w.date, e.weight, e.sets, e.reps
+        FROM exercises e
+        INNER JOIN workouts w ON w.id = e.workout_id
+        WHERE w.body_part = :bodyPart AND w.type = 'STRENGTH' AND e.weight IS NOT NULL
+        ORDER BY w.date ASC
+    """)
+    suspend fun getBodyPartTrendData(bodyPart: String): List<ExerciseTrendPoint>
 }

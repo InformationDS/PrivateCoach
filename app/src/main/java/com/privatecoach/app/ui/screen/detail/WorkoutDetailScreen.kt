@@ -74,11 +74,7 @@ fun WorkoutDetailScreen(
                     Spacer(modifier = Modifier.height(PcSpacing.sm))
                     Row(horizontalArrangement = Arrangement.spacedBy(PcSpacing.sm)) {
                         if (workout.type == WorkoutType.STRENGTH) StrengthTag() else CardioTag()
-                        workout.bodyPart?.let { bp -> PcTag(text = bp) }
-                    }
-                    workout.feeling?.let { feel ->
-                        Spacer(modifier = Modifier.height(PcSpacing.sm))
-                        Text("训练感受: ${feel.toChinese()}", style = MaterialTheme.typography.bodyMedium, color = PcTextSecondary)
+                        workout.bodyPart?.let { bp -> PcTag(text = bp.chineseName) }
                     }
                     Text("录入方式: ${when(workout.inputMode) { com.privatecoach.app.core.model.InputMode.VOICE -> "🎤 语音"; com.privatecoach.app.core.model.InputMode.TEXT -> "📝 文字"; com.privatecoach.app.core.model.InputMode.MANUAL -> "✍️ 手动" }}", style = MaterialTheme.typography.bodySmall, color = PcTextSecondary)
                 }
@@ -137,7 +133,13 @@ private fun ExerciseDetailRow(exercise: Exercise, index: Int) {
             Text("$index.", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium, color = PcAccentCopper)
             Spacer(modifier = Modifier.width(PcSpacing.sm))
             Column(modifier = Modifier.weight(1f)) {
-                Text(exercise.name, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onBackground)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(exercise.name, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onBackground)
+                    Spacer(modifier = Modifier.weight(1f))
+                    exercise.feeling?.let { feel ->
+                        Text("${feel.toChinese()}", style = MaterialTheme.typography.labelSmall, color = PcAccentCopper)
+                    }
+                }
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(PcSpacing.md)) {
                     exercise.weight?.let { w ->

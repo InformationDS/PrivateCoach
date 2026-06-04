@@ -5,9 +5,12 @@ import androidx.lifecycle.viewModelScope
 import com.privatecoach.app.core.analytics.ReportGenerator
 import com.privatecoach.app.core.analytics.TrendAnalyzer
 import com.privatecoach.app.core.analytics.VolumeCalculator
-import com.privatecoach.app.core.model.MultiExerciseTrend
+import com.privatecoach.app.core.model.BodyPart
 import com.privatecoach.app.core.model.TimeRange
 import com.privatecoach.app.domain.repository.WorkoutRepository
+import com.privatecoach.app.ui.component.ChartBar
+import com.privatecoach.app.ui.component.ChartLine
+import com.privatecoach.app.ui.component.ChartLineColors
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,6 +21,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalAdjusters
 import javax.inject.Inject
 
@@ -35,11 +39,6 @@ class AnalysisViewModel @Inject constructor(
     private var loadJob: Job? = null
 
     init {
-        viewModelScope.launch {
-            workoutRepository.getAllExerciseNames().collect { names ->
-                _uiState.update { it.copy(allExerciseNames = names) }
-            }
-        }
         loadData()
     }
 
@@ -53,22 +52,18 @@ class AnalysisViewModel @Inject constructor(
         loadData()
     }
 
-    fun toggleExercise(name: String) {
+    fun toggleBodyPart(bp: BodyPart) {
         _uiState.update { state ->
-            val current = state.selectedExerciseNames
-            val updated = if (name in current) {
-                current - name
+            val current = state.selectedBodyParts
+            val updated = if (bp in current) {
+                current - bp
             } else {
-                if (current.size >= 5) current
-                else current + name
+                if (current.size >= 3) current
+                else current + bp
             }
-            state.copy(selectedExerciseNames = updated)
+            state.copy(selectedBodyParts = updated)
         }
         viewModelScope.launch { loadTrendData() }
-    }
-
-    fun setTrendMetric(metric: TrendMetric) {
-        _uiState.update { it.copy(trendMetric = metric) }
     }
 
     fun clearError() {
@@ -124,28 +119,72 @@ class AnalysisViewModel @Inject constructor(
 
     private suspend fun loadTrendData() {
         val state = _uiState.value
-        if (state.selectedExerciseNames.isEmpty()) {
+        if (state.selectedBodyParts.isEmpty()) {
             _uiState.update {
-                it.copy(trendLines = emptyList(), isLoading = false)
+                it.copy(bodyPartTrendLines = emptyList(), exerciseBreakdown = emptyList(), trendXLabels = emptyList(), isLoading = false)
             }
             return
         }
 
         val (start, end) = state.timeRange.toDateRange()
-        val allTrends = mutableListOf<MultiExerciseTrend>()
+        val chartLines = mutableListOf<ChartLine>()
+        val allDates = mutableSetOf<LocalDate>()
 
-        for (exerciseName in state.selectedExerciseNames) {
-            val raw = workoutRepository.getExerciseTrendData(exerciseName)
+        state.selectedBodyParts.forEachIndexed { index, bp ->
+            val raw = workoutRepository.getBodyPartTrendData(bp.name)
                 .filter { it.date in start..end }
             if (raw.isNotEmpty()) {
-                val trend = trendAnalyzer.computeTrendForExercise(raw)
-                if (trend.isNotEmpty()) {
-                    allTrends.add(MultiExerciseTrend(exerciseName, trend))
+                val aggregated = trendAnalyzer.computeBodyPartAggregation(raw, bp.chineseName)
+                val volumes = aggregated.points.mapNotNull { it.totalVolume }
+                allDates.addAll(aggregated.points.map { it.date })
+                if (volumes.isNotEmpty()) {
+                    chartLines.add(
+                        ChartLine(
+                            label = bp.chineseName,
+                            values = volumes,
+                            color = ChartLineColors.getOrElse(index) { ChartLineColors[0] }
+                        )
+                    )
                 }
             }
         }
 
-        _uiState.update { it.copy(trendLines = allTrends, isLoading = false) }
+        val sortedDates = allDates.sorted()
+        val xLabels = if (sortedDates.size <= 10) {
+            sortedDates.map { it.format(DateTimeFormatter.ofPattern("M/d")) }
+        } else {
+            val step = (sortedDates.size / 6).coerceAtLeast(1)
+            sortedDates.mapIndexed { i, d ->
+                if (i % step == 0) d.format(DateTimeFormatter.ofPattern("M/d")) else ""
+            }
+        }
+
+        // Exercise breakdown (only when single body part selected)
+        var breakdown = emptyList<ChartBar>()
+        if (state.selectedBodyParts.size == 1) {
+            val bp = state.selectedBodyParts.first()
+            val trendRaw = workoutRepository.getBodyPartTrendData(bp.name)
+                .filter { it.date in start..end }
+            val byExercise = trendRaw.groupBy { it.name }
+            val bars = byExercise.map { (name, points) ->
+                val totalVol = points.sumOf { (it.weight ?: 0.0) * (it.sets ?: 0) * (it.reps ?: 0) }
+                ChartBar(
+                    label = name,
+                    value = totalVol.toFloat(),
+                    color = com.privatecoach.app.ui.component.getBodyPartColor(bp.chineseName)
+                )
+            }.sortedByDescending { it.value }.take(8)
+            breakdown = bars
+        }
+
+        _uiState.update {
+            it.copy(
+                bodyPartTrendLines = chartLines,
+                trendXLabels = xLabels,
+                exerciseBreakdown = breakdown,
+                isLoading = false
+            )
+        }
     }
 
     private suspend fun loadVolumeData() {

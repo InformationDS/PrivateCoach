@@ -9,7 +9,7 @@ object AiPromptBuilder {
 
 {
   "type": "strength" | "cardio",
-  "bodyPart": "胸部" | "背部" | "腿部" | "肩部" | "手臂" | "核心" | "全身" | null,
+  "bodyPart": "胸部" | "背部" | "腿部" | "肩部" | "二头肌" | "三头肌" | "核心" | "全身" | null,
   "exercises": [
     {
       "name": "动作名称",
@@ -18,7 +18,8 @@ object AiPromptBuilder {
       "sets": 数字或null,
       "reps": 数字或null,
       "duration": 数字或null,
-      "distance": 数字或null
+      "distance": 数字或null,
+      "feeling": "轻松" | "良好" | "一般" | "疲劳" | null
     }
   ],
   "cardioDetail": {
@@ -28,7 +29,6 @@ object AiPromptBuilder {
     "avgHeartRate": 数字或null,
     "calories": 数字或null
   } | null,
-  "feeling": "轻松" | "良好" | "一般" | "疲劳" | null,
   "notes": "补充说明或null",
   "summary": "一段中文自然语言训练总结（Markdown格式）"
 }
@@ -36,7 +36,9 @@ object AiPromptBuilder {
 规则：
 - 模糊信息（如"做了几组"、"差不多60公斤"）对应字段留null，不要猜测填充
 - 自动判断训练类型：提到力量动作（卧推、深蹲、硬拉等）→"strength"，提到跑步、游泳、骑行等→"cardio"
+- bodyPart 必须从上述固定列表中选择（"胸部"/"背部"/"腿部"/"肩部"/"二头肌"/"三头肌"/"核心"/"全身"/null），不要输出其他值
 - bodyPart 根据动作名和上下文推断，有氧训练通常为null
+- 动作名称使用标准前缀：杠铃/哑铃/壶铃/绳索/自重/器械 + 动作核心名。如用户说"卧推"无前缀→根据上下文推断（有杠铃片重量→"杠铃卧推"，用哑铃→"哑铃卧推"），用户说"推胸"→统一为"器械推胸"
 - 感受关键词映射："状态不错"/"还行"/"感觉挺好的"→"良好"，"有点累"/"没状态"→"疲劳"
 - notes 存放用户提到的非结构化补充信息
 """.trimIndent()

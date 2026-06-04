@@ -24,7 +24,6 @@ data class WorkoutEntity(
     @ColumnInfo(name = "date") val date: LocalDate,
     @ColumnInfo(name = "type") val type: WorkoutType,
     @ColumnInfo(name = "body_part") val bodyPart: String? = null,
-    @ColumnInfo(name = "feeling") val feeling: String? = null,
     @ColumnInfo(name = "ai_summary") val aiSummary: String? = null,
     @ColumnInfo(name = "raw_transcript") val rawTranscript: String? = null,
     @ColumnInfo(name = "audio_file_path") val audioFilePath: String? = null,

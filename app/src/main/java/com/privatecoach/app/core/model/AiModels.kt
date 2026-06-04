@@ -2,10 +2,9 @@ package com.privatecoach.app.core.model
 
 data class AiParsedResult(
     val type: WorkoutType,
-    val bodyPart: String?,
+    val bodyPart: BodyPart?,
     val exercises: List<ParsedExercise>,
     val cardioDetail: ParsedCardioDetail?,
-    val feeling: Feeling?,
     val notes: String?,
     val summaryMarkdown: String,
     val rawJson: String
@@ -18,7 +17,8 @@ data class ParsedExercise(
     val sets: Int?,
     val reps: Int?,
     val duration: Int?,
-    val distance: Double?
+    val distance: Double?,
+    val feeling: Feeling? = null
 )
 
 data class ParsedCardioDetail(

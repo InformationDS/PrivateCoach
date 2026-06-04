@@ -1,7 +1,7 @@
 package com.privatecoach.app.core.ai
 
 import com.privatecoach.app.core.model.AiParsedResult
-import com.privatecoach.app.core.model.Feeling
+import com.privatecoach.app.core.model.BodyPart
 import com.privatecoach.app.core.model.ParsedCardioDetail
 import com.privatecoach.app.core.model.ParsedExercise
 import com.privatecoach.app.core.model.WorkoutType
@@ -33,10 +33,20 @@ class AiResponseParser @Inject constructor() {
             try { WorkoutType.valueOf(it.uppercase()) } catch (_: Exception) { WorkoutType.STRENGTH }
         } ?: WorkoutType.STRENGTH
 
-        val bodyPart = root["bodyPart"]?.jsonPrimitive?.content
+        val bodyPartRaw = root["bodyPart"]?.jsonPrimitive?.content
+        val bodyPart = bodyPartRaw?.let { BodyPart.fromChinese(it) }
 
         val exercises = root["exercises"]?.jsonArray?.map { elem ->
             val obj = elem.jsonObject
+            val exFeeling = obj["feeling"]?.jsonPrimitive?.content?.let { f ->
+                when (f) {
+                    "轻松" -> com.privatecoach.app.core.model.Feeling.EASY
+                    "良好" -> com.privatecoach.app.core.model.Feeling.GOOD
+                    "一般" -> com.privatecoach.app.core.model.Feeling.NORMAL
+                    "疲劳" -> com.privatecoach.app.core.model.Feeling.TIRED
+                    else -> null
+                }
+            }
             ParsedExercise(
                 name = obj["name"]?.jsonPrimitive?.content ?: "",
                 weight = obj["weight"]?.jsonPrimitive?.doubleOrNull,
@@ -44,7 +54,8 @@ class AiResponseParser @Inject constructor() {
                 sets = obj["sets"]?.jsonPrimitive?.intOrNull,
                 reps = obj["reps"]?.jsonPrimitive?.intOrNull,
                 duration = obj["duration"]?.jsonPrimitive?.intOrNull,
-                distance = obj["distance"]?.jsonPrimitive?.doubleOrNull
+                distance = obj["distance"]?.jsonPrimitive?.doubleOrNull,
+                feeling = exFeeling
             )
         } ?: emptyList()
 
@@ -58,16 +69,6 @@ class AiResponseParser @Inject constructor() {
             )
         }
 
-        val feeling = root["feeling"]?.jsonPrimitive?.content?.let { f ->
-            when (f) {
-                "轻松" -> Feeling.EASY
-                "良好" -> Feeling.GOOD
-                "一般" -> Feeling.NORMAL
-                "疲劳" -> Feeling.TIRED
-                else -> null
-            }
-        }
-
         val notes = root["notes"]?.jsonPrimitive?.content
         val summary = root["summary"]?.jsonPrimitive?.content ?: ""
 
@@ -76,7 +77,6 @@ class AiResponseParser @Inject constructor() {
             bodyPart = bodyPart,
             exercises = exercises,
             cardioDetail = cardioDetail,
-            feeling = feeling,
             notes = notes,
             summaryMarkdown = summary,
             rawJson = cleanJson

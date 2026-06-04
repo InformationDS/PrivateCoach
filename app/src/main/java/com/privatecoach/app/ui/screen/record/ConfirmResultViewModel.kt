@@ -3,9 +3,9 @@ package com.privatecoach.app.ui.screen.record
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.privatecoach.app.core.model.AiParsedResult
+import com.privatecoach.app.core.model.BodyPart
 import com.privatecoach.app.core.model.CardioDetail
 import com.privatecoach.app.core.model.Exercise
-import com.privatecoach.app.core.model.Feeling
 import com.privatecoach.app.core.model.InputMode
 import com.privatecoach.app.core.model.ParsedExercise
 import com.privatecoach.app.core.model.Workout
@@ -37,8 +37,7 @@ class ConfirmResultViewModel @Inject constructor(
                 it.copy(
                     parsedResult = result,
                     exercises = result.exercises,
-                    bodyPart = result.bodyPart ?: "",
-                    feeling = result.feeling?.name?.lowercase(),
+                    bodyPart = result.bodyPart,
                     audioFilePath = audioPath
                 )
             }
@@ -77,8 +76,21 @@ class ConfirmResultViewModel @Inject constructor(
         }
     }
 
-    fun setBodyPart(part: String) = _uiState.update { it.copy(bodyPart = part) }
-    fun setFeeling(feeling: String?) = _uiState.update { it.copy(feeling = feeling) }
+    fun setBodyPart(part: BodyPart?) = _uiState.update { it.copy(bodyPart = part) }
+    fun setFeeling(index: Int, feeling: String?) {
+        _uiState.update { state ->
+            val exs = state.exercises.toMutableList()
+            if (index < exs.size) {
+                exs[index] = exs[index].copy(
+                    feeling = feeling?.let {
+                        try { com.privatecoach.app.core.model.Feeling.valueOf(it.uppercase()) }
+                        catch (_: Exception) { null }
+                    }
+                )
+            }
+            state.copy(exercises = exs)
+        }
+    }
 
     fun saveWorkout() {
         val state = _uiState.value
@@ -90,12 +102,9 @@ class ConfirmResultViewModel @Inject constructor(
             val workout = Workout(
                 date = LocalDate.now(),
                 type = parsed.type,
-                bodyPart = state.bodyPart.ifBlank { null },
-                feeling = state.feeling?.let {
-                    try { Feeling.valueOf(it.uppercase()) } catch (_: Exception) { null }
-                },
+                bodyPart = state.bodyPart,
                 aiSummary = parsed.summaryMarkdown,
-                rawTranscript = null,  // could store original transcript if available
+                rawTranscript = null,
                 audioFilePath = state.audioFilePath,
                 inputMode = if (state.audioFilePath != null) InputMode.VOICE else InputMode.TEXT,
                 createdAt = Instant.now(),
@@ -110,6 +119,7 @@ class ConfirmResultViewModel @Inject constructor(
                         duration = pe.duration,
                         distance = pe.distance,
                         sortOrder = index,
+                        feeling = pe.feeling,
                         cardioDetail = parsed.cardioDetail?.let { cd ->
                             CardioDetail(
                                 durationSeconds = cd.duration ?: pe.duration ?: 0,
@@ -122,7 +132,7 @@ class ConfirmResultViewModel @Inject constructor(
                     )
                 }
             )
-            workoutRepository.createWorkout(workout)
+            workoutRepository.saveWorkout(workout)
             _uiState.update { it.copy(isSaving = false, saveComplete = true) }
         }
     }

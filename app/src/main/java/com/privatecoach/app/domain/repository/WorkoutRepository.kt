@@ -18,6 +18,7 @@ interface WorkoutRepository {
 
     suspend fun getAllWorkoutsOnce(): List<Workout>
     suspend fun getMostRecentWorkoutOnce(): Workout?
+    suspend fun saveWorkout(workout: Workout): Long
     suspend fun createWorkout(workout: Workout): Long
     suspend fun updateWorkout(workout: Workout)
     suspend fun deleteWorkout(workoutId: Long)
@@ -27,6 +28,7 @@ interface WorkoutRepository {
     suspend fun getExerciseTrendData(exerciseName: String): List<ExerciseTrendPoint>
     suspend fun getBodyPartDistribution(start: LocalDate, end: LocalDate): List<BodyPartCount>
     suspend fun getVolumeData(start: LocalDate, end: LocalDate): List<VolumeDataPoint>
+    suspend fun getBodyPartTrendData(bodyPart: String): List<ExerciseTrendPoint>
     suspend fun getTrainingFrequency(start: LocalDate, end: LocalDate): List<TrainingFrequencyPoint>
     suspend fun getTrainingDaysCount(start: LocalDate, end: LocalDate): Int
     suspend fun getWorkoutByIdOnce(id: Long): Workout?

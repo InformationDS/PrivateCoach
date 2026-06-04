@@ -1,5 +1,6 @@
 package com.privatecoach.app.data.mapper
 
+import com.privatecoach.app.core.model.BodyPart
 import com.privatecoach.app.core.model.TemplateExercise
 import com.privatecoach.app.core.model.TrainingTemplate
 import com.privatecoach.app.data.local.entity.TemplateExerciseEntity
@@ -10,7 +11,7 @@ fun TemplateWithExercises.toDomain(): TrainingTemplate = TrainingTemplate(
     id = template.id,
     name = template.name,
     type = template.type,
-    bodyPart = template.bodyPart,
+    bodyPart = template.bodyPart?.let { BodyPart.fromString(it) },
     sortOrder = template.sortOrder,
     createdAt = template.createdAt,
     exercises = exercises.map { it.toDomain() }
@@ -29,7 +30,7 @@ fun TrainingTemplate.toTemplateEntity(): TrainingTemplateEntity = TrainingTempla
     id = id,
     name = name,
     type = type,
-    bodyPart = bodyPart,
+    bodyPart = bodyPart?.name,
     sortOrder = sortOrder,
     createdAt = createdAt
 )

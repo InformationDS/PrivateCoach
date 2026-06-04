@@ -211,7 +211,7 @@ private fun WorkoutPreviewCard(
                 if (workout.type == WorkoutType.STRENGTH) StrengthTag() else CardioTag()
                 workout.bodyPart?.let { bp ->
                     Spacer(modifier = Modifier.width(8.dp))
-                    PcTag(text = bp)
+                    PcTag(text = bp.chineseName)
                 }
             }
             Icon(
@@ -228,7 +228,7 @@ private fun WorkoutPreviewCard(
             color = PcTextSecondary,
             maxLines = 1
         )
-        workout.feeling?.let { feel ->
+        workout.exercises.firstOrNull()?.feeling?.let { feel ->
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = "感受: ${feel.toChinese()}",

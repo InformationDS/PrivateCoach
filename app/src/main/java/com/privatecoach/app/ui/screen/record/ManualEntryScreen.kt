@@ -16,9 +16,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.privatecoach.app.core.model.Feeling
+import com.privatecoach.app.core.model.BodyPart
 import com.privatecoach.app.core.model.WorkoutType
-import com.privatecoach.app.core.model.toChinese
 import com.privatecoach.app.ui.component.*
 import com.privatecoach.app.ui.theme.*
 
@@ -99,13 +98,29 @@ fun ManualEntryScreen(
                 }
             }
 
-            // Body part
+            // Body part chip selector
             item {
-                PcTextField(
-                    value = uiState.bodyPart,
-                    onValueChange = { viewModel.setBodyPart(it) },
-                    placeholder = "训练部位（如：胸部、背部、腿部）"
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(PcSpacing.xs)
+                ) {
+                    BodyPart.selectableList.forEach { bp ->
+                        val selected = uiState.bodyPart == bp
+                        Box(
+                            modifier = Modifier
+                                .border(1.dp, if (selected) PcAccentCopper else PcDivider, PcShapes.extraSmall)
+                                .clickable { viewModel.setBodyPart(if (selected) null else bp) }
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                bp.chineseName,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (selected) PcAccentCopper else PcTextSecondary
+                            )
+                        }
+                    }
+                }
             }
 
             // Section header
@@ -151,6 +166,25 @@ fun ManualEntryScreen(
                             modifier = Modifier.weight(1f)
                         )
                     }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    // Per-exercise feeling
+                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                        listOf("轻松" to "EASY", "良好" to "GOOD", "一般" to "NORMAL", "疲劳" to "TIRED").forEach { (label, key) ->
+                            val selected = exercise.feeling?.name == key
+                            Box(
+                                modifier = Modifier
+                                    .border(1.dp, if (selected) PcAccentCopper else PcDivider, PcShapes.extraSmall)
+                                    .clickable { viewModel.setExerciseFeeling(index, if (selected) null else label) }
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    label,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (selected) PcAccentCopper else PcTextSecondary
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
@@ -160,23 +194,6 @@ fun ManualEntryScreen(
                     Icon(Icons.Outlined.Add, contentDescription = null, tint = PcAccentCopper, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("添加动作", color = PcAccentCopper)
-                }
-            }
-
-            // Feeling selector
-            item {
-                Spacer(modifier = Modifier.height(PcSpacing.sm))
-                Text("训练感受", style = MaterialTheme.typography.labelMedium, color = PcTextSecondary)
-                Spacer(modifier = Modifier.height(PcSpacing.sm))
-                Row(horizontalArrangement = Arrangement.spacedBy(PcSpacing.sm)) {
-                    Feeling.entries.forEach { feel ->
-                        val selected = uiState.feeling == feel
-                        PcTag(
-                            text = feel.toChinese(),
-                            color = if (selected) PcAccentCopper else PcDivider,
-                            modifier = Modifier.clickable { viewModel.setFeeling(if (selected) null else feel) }
-                        )
-                    }
                 }
             }
 

@@ -32,5 +32,6 @@ data class ExerciseEntity(
     @ColumnInfo(name = "duration") val duration: Int? = null,
     @ColumnInfo(name = "distance") val distance: Double? = null,
     @ColumnInfo(name = "sort_order") val sortOrder: Int = 0,
-    @ColumnInfo(name = "notes") val notes: String? = null
+    @ColumnInfo(name = "notes") val notes: String? = null,
+    @ColumnInfo(name = "feeling") val feeling: String? = null
 )

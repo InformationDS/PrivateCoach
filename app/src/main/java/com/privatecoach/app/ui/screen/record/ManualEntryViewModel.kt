@@ -2,8 +2,8 @@ package com.privatecoach.app.ui.screen.record
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.privatecoach.app.core.model.BodyPart
 import com.privatecoach.app.core.model.Exercise
-import com.privatecoach.app.core.model.Feeling
 import com.privatecoach.app.core.model.InputMode
 import com.privatecoach.app.core.model.Workout
 import com.privatecoach.app.core.model.WorkoutType
@@ -83,8 +83,21 @@ class ManualEntryViewModel @Inject constructor(
         }
     }
 
-    fun setFeeling(feeling: Feeling?) = _uiState.update { it.copy(feeling = feeling) }
-    fun setBodyPart(part: String) = _uiState.update { it.copy(bodyPart = part) }
+    fun setExerciseFeeling(index: Int, feeling: String?) {
+        _uiState.update { state ->
+            val exs = state.exercises.toMutableList()
+            if (index < exs.size) {
+                exs[index] = exs[index].copy(
+                    feeling = feeling?.let {
+                        try { com.privatecoach.app.core.model.Feeling.valueOf(it.uppercase()) }
+                        catch (_: Exception) { null }
+                    }
+                )
+            }
+            state.copy(exercises = exs)
+        }
+    }
+    fun setBodyPart(part: BodyPart?) = _uiState.update { it.copy(bodyPart = part) }
 
     fun applyTemplate(templateId: Long?) {
         if (templateId == null) {
@@ -97,7 +110,7 @@ class ManualEntryViewModel @Inject constructor(
                 state.copy(
                     selectedTemplateId = templateId,
                     workoutType = template.type,
-                    bodyPart = template.bodyPart ?: "",
+                    bodyPart = template.bodyPart,
                     exercises = template.exercises.mapIndexed { i, te ->
                         Exercise(name = te.name, weightUnit = te.weightUnit, sortOrder = i, notes = te.notes)
                     }
@@ -117,15 +130,14 @@ class ManualEntryViewModel @Inject constructor(
             val workout = Workout(
                 date = LocalDate.now(),
                 type = state.workoutType,
-                bodyPart = state.bodyPart.ifBlank { null },
-                feeling = state.feeling,
+                bodyPart = state.bodyPart,
                 inputMode = InputMode.MANUAL,
                 templateId = state.selectedTemplateId,
                 createdAt = Instant.now(),
                 updatedAt = Instant.now(),
                 exercises = validExercises
             )
-            workoutRepository.createWorkout(workout)
+            workoutRepository.saveWorkout(workout)
             _uiState.update { it.copy(isSaving = false, saveComplete = true) }
         }
     }

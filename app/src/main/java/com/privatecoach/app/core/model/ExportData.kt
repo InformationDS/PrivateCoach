@@ -18,7 +18,6 @@ data class ExportWorkout(
     val date: String,
     val type: String,
     val bodyPart: String? = null,
-    val feeling: String? = null,
     val aiSummary: String? = null,
     val rawTranscript: String? = null,
     val inputMode: String,
@@ -37,6 +36,7 @@ data class ExportExercise(
     val distance: Double? = null,
     val sortOrder: Int = 0,
     val notes: String? = null,
+    val feeling: String? = null,
     val cardioDetail: ExportCardioDetail? = null
 )
 

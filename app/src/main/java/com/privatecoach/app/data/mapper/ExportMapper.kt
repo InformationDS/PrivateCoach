@@ -1,5 +1,6 @@
 package com.privatecoach.app.data.mapper
 
+import com.privatecoach.app.core.model.BodyPart
 import com.privatecoach.app.core.model.CardioDetail
 import com.privatecoach.app.core.model.Exercise
 import com.privatecoach.app.core.model.ExportCardioDetail
@@ -22,8 +23,7 @@ fun Workout.toExportWorkout(): ExportWorkout = ExportWorkout(
     syncId = syncId,
     date = date.toString(),
     type = type.name,
-    bodyPart = bodyPart,
-    feeling = feeling?.name,
+    bodyPart = bodyPart?.name,
     aiSummary = aiSummary,
     rawTranscript = rawTranscript,
     inputMode = inputMode.name,
@@ -41,6 +41,7 @@ fun Exercise.toExportExercise(): ExportExercise = ExportExercise(
     distance = distance,
     sortOrder = sortOrder,
     notes = notes,
+    feeling = feeling?.name,
     cardioDetail = cardioDetail?.toExportCardioDetail()
 )
 
@@ -55,7 +56,7 @@ fun CardioDetail.toExportCardioDetail(): ExportCardioDetail = ExportCardioDetail
 fun TrainingTemplate.toExportTemplate(): ExportTemplate = ExportTemplate(
     name = name,
     type = type.name,
-    bodyPart = bodyPart,
+    bodyPart = bodyPart?.name,
     sortOrder = sortOrder,
     createdAt = createdAt.toString(),
     exercises = exercises.map { it.toExportTemplateExercise() }
@@ -74,8 +75,7 @@ fun ExportWorkout.toWorkout(): Workout = Workout(
     syncId = syncId,
     date = runCatching { LocalDate.parse(date) }.getOrDefault(LocalDate.now()),
     type = runCatching { WorkoutType.valueOf(type) }.getOrDefault(WorkoutType.STRENGTH),
-    bodyPart = bodyPart,
-    feeling = feeling?.let { runCatching { Feeling.valueOf(it) }.getOrNull() },
+    bodyPart = bodyPart?.let { BodyPart.fromString(it) },
     aiSummary = aiSummary,
     rawTranscript = rawTranscript,
     inputMode = runCatching { InputMode.valueOf(inputMode) }.getOrDefault(InputMode.MANUAL),
@@ -94,6 +94,7 @@ fun ExportExercise.toExercise(): Exercise = Exercise(
     distance = distance,
     sortOrder = sortOrder,
     notes = notes,
+    feeling = feeling?.let { runCatching { Feeling.valueOf(it) }.getOrNull() },
     cardioDetail = cardioDetail?.let {
         CardioDetail(
             durationSeconds = it.durationSeconds,
@@ -108,7 +109,7 @@ fun ExportExercise.toExercise(): Exercise = Exercise(
 fun ExportTemplate.toTrainingTemplate(): TrainingTemplate = TrainingTemplate(
     name = name,
     type = runCatching { WorkoutType.valueOf(type) }.getOrDefault(WorkoutType.STRENGTH),
-    bodyPart = bodyPart,
+    bodyPart = bodyPart?.let { BodyPart.fromString(it) },
     sortOrder = sortOrder,
     createdAt = runCatching { Instant.parse(createdAt) }.getOrDefault(Instant.now()),
     exercises = exercises.map { it.toTemplateExercise() }

@@ -38,7 +38,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.privatecoach.app.core.model.TimeRange
-import com.privatecoach.app.core.model.toChinese
 import com.privatecoach.app.ui.component.ChartBar
 import com.privatecoach.app.ui.component.ChartLine
 import com.privatecoach.app.ui.component.ChartLineColors
@@ -175,136 +174,82 @@ private fun TrendTabContent(
         )
         Spacer(modifier = Modifier.height(PcSpacing.md))
 
-        // Exercise chip selector
-        if (uiState.allExerciseNames.isNotEmpty()) {
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(PcSpacing.sm)
-            ) {
-                items(uiState.allExerciseNames) { name ->
-                    val selected = name in uiState.selectedExerciseNames
-                    Box(
-                        modifier = Modifier
-                            .border(
-                                1.dp,
-                                if (selected) PcAccentCopper else PcDivider,
-                                PcShapes.extraSmall
-                            )
-                            .clickable { viewModel.toggleExercise(name) }
-                            .padding(horizontal = 10.dp, vertical = 4.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            name,
-                            color = if (selected) PcAccentCopper else PcTextSecondary,
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                    }
-                }
-            }
-            Text(
-                "最多选择5个动作",
-                style = MaterialTheme.typography.labelSmall,
-                color = PcTextDisabled,
-                modifier = Modifier.padding(top = 4.dp)
-            )
-        }
-        Spacer(modifier = Modifier.height(PcSpacing.md))
-
-        // Trend metric selector
+        // Body part chip selector
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(PcSpacing.sm)
+            horizontalArrangement = Arrangement.spacedBy(PcSpacing.xs)
         ) {
-            TrendMetric.entries.forEach { metric ->
-                val selected = uiState.trendMetric == metric
+            com.privatecoach.app.core.model.BodyPart.selectableList.forEach { bp ->
+                val selected = bp in uiState.selectedBodyParts
                 Box(
                     modifier = Modifier
-                        .weight(1f)
-                        .border(
-                            1.dp,
-                            if (selected) PcAccentCopper else PcDivider,
-                            PcShapes.extraSmall
-                        )
-                        .clickable { viewModel.setTrendMetric(metric) }
-                        .padding(vertical = 6.dp),
+                        .border(1.dp, if (selected) PcAccentCopper else PcDivider, PcShapes.extraSmall)
+                        .clickable { viewModel.toggleBodyPart(bp) }
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        metric.label,
-                        color = if (selected) PcAccentCopper else PcTextSecondary,
+                        bp.chineseName,
                         style = MaterialTheme.typography.labelSmall,
-                        fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal
+                        color = if (selected) PcAccentCopper else PcTextSecondary
                     )
                 }
             }
         }
-        Spacer(modifier = Modifier.height(PcSpacing.lg))
+        Text(
+            "最多选择3个部位",
+            style = MaterialTheme.typography.labelSmall,
+            color = PcTextDisabled,
+            modifier = Modifier.padding(top = 2.dp)
+        )
+        Spacer(modifier = Modifier.height(PcSpacing.md))
 
         if (uiState.isLoading) {
-            Box(
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
+            Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                 PcLoadingIndicator()
             }
-        } else if (uiState.selectedExerciseNames.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                PcEmptyState(message = "选择一个动作开始分析趋势")
-            }
-        } else if (uiState.trendLines.isNotEmpty()) {
-            val lines = uiState.trendLines.mapIndexed { index, trend ->
-                val values = trend.points.mapNotNull { point ->
-                    when (uiState.trendMetric) {
-                        TrendMetric.MAX_WEIGHT -> point.maxWeight
-                        TrendMetric.TOTAL_VOLUME -> point.totalVolume
-                        TrendMetric.AVG_REPS -> point.avgReps
-                    }
-                }
-                ChartLine(
-                    label = trend.exerciseName,
-                    values = values,
-                    color = ChartLineColors.getOrElse(index) { PcAccentCopper }
-                )
-            }.filter { it.values.isNotEmpty() }
-
-            if (lines.isNotEmpty()) {
-                val allDates = uiState.trendLines
-                    .flatMap { it.points.map { p -> p.date } }
-                    .distinct()
-                    .sorted()
-                val xLabels = if (allDates.size <= 12) {
-                    allDates.map { it.format(DateTimeFormatter.ofPattern("M/d")) }
-                } else {
-                    // Sample labels for readability
-                    val step = allDates.size / 6
-                    allDates.mapIndexed { i, d ->
-                        if (i % step == 0) d.format(DateTimeFormatter.ofPattern("M/d")) else ""
-                    }
-                }
-
-                PcLineChart(
-                    lines = lines,
-                    xAxisLabels = xLabels,
-                    showLegend = true,
-                    modifier = Modifier.weight(1f)
-                )
-            } else {
-                Box(
-                    modifier = Modifier.fillMaxWidth().weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    PcEmptyState(message = "所选动作暂无数据")
-                }
+        } else if (uiState.selectedBodyParts.isEmpty()) {
+            Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+                PcEmptyState(message = "选择一个训练部位开始分析趋势")
             }
         } else {
-            Box(
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                PcEmptyState(message = "暂无趋势数据")
+            Column(modifier = Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
+                // Aggregated body part trend line
+                if (uiState.bodyPartTrendLines.isNotEmpty()) {
+                    Text(
+                        "部位容量趋势",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Spacer(modifier = Modifier.height(PcSpacing.sm))
+                    PcLineChart(
+                        lines = uiState.bodyPartTrendLines,
+                        xAxisLabels = uiState.trendXLabels,
+                        showLegend = true,
+                        formatValue = { "%.0f kg".format(it) }
+                    )
+                    Spacer(modifier = Modifier.height(PcSpacing.lg))
+                }
+
+                // Exercise breakdown (single body part only)
+                if (uiState.exerciseBreakdown.isNotEmpty()) {
+                    val bp = uiState.selectedBodyParts.first()
+                    Text(
+                        "${bp.chineseName}动作容量拆解",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Spacer(modifier = Modifier.height(PcSpacing.sm))
+                    PcBarChart(
+                        bars = uiState.exerciseBreakdown,
+                        showValues = true,
+                        valueLabelTransform = { "%.0f".format(it) }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(40.dp))
             }
         }
     }

@@ -95,11 +95,11 @@ private fun WorkoutHistoryRow(workout: Workout, onClick: () -> Unit) {
                     Text(workout.date.format(dateFormatter), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium, color = PcAccentCopper)
                     Spacer(modifier = Modifier.width(8.dp))
                     if (workout.type == WorkoutType.STRENGTH) StrengthTag() else CardioTag()
-                    workout.bodyPart?.let { bp -> Spacer(modifier = Modifier.width(6.dp)); PcTag(text = bp) }
+                    workout.bodyPart?.let { bp -> Spacer(modifier = Modifier.width(6.dp)); PcTag(text = bp.chineseName) }
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(workout.exercises.joinToString(" · ") { it.name }, style = MaterialTheme.typography.bodySmall, color = PcTextSecondary, maxLines = 1)
-                workout.feeling?.let { feel ->
+                workout.exercises.firstOrNull()?.feeling?.let { feel ->
                     Spacer(modifier = Modifier.height(2.dp))
                     Text("感受: ${feel.toChinese()}", style = MaterialTheme.typography.bodySmall, color = PcTextSecondary)
                 }

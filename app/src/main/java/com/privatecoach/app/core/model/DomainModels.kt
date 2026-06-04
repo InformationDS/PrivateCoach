@@ -8,8 +8,7 @@ data class Workout(
     val syncId: String? = null,
     val date: LocalDate,
     val type: WorkoutType,
-    val bodyPart: String? = null,
-    val feeling: Feeling? = null,
+    val bodyPart: BodyPart? = null,
     val aiSummary: String? = null,
     val rawTranscript: String? = null,
     val audioFilePath: String? = null,
@@ -32,6 +31,7 @@ data class Exercise(
     val distance: Double? = null,
     val sortOrder: Int = 0,
     val notes: String? = null,
+    val feeling: Feeling? = null,
     val cardioDetail: CardioDetail? = null
 )
 
@@ -49,7 +49,7 @@ data class TrainingTemplate(
     val id: Long = 0,
     val name: String,
     val type: WorkoutType,
-    val bodyPart: String? = null,
+    val bodyPart: BodyPart? = null,
     val sortOrder: Int = 0,
     val createdAt: Instant = Instant.now(),
     val exercises: List<TemplateExercise> = emptyList()

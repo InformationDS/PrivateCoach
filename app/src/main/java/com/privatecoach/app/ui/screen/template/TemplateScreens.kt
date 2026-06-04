@@ -66,7 +66,7 @@ fun TemplateListScreen(
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Row(horizontalArrangement = Arrangement.spacedBy(PcSpacing.sm)) {
                                     if (template.type == WorkoutType.STRENGTH) StrengthTag() else CardioTag()
-                                    template.bodyPart?.let { PcTag(text = it) }
+                                    template.bodyPart?.let { PcTag(text = it.chineseName) }
                                 }
                                 Text("${template.exercises.size} 个动作", style = MaterialTheme.typography.bodySmall, color = PcTextSecondary, modifier = Modifier.padding(top = 4.dp))
                             }
@@ -133,7 +133,30 @@ fun TemplateEditScreen(
                 }
             }
 
-            item { PcTextField(value = uiState.bodyPart, onValueChange = { viewModel.setBodyPart(it) }, placeholder = "训练部位（可选）") }
+            // Body part chip selector
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(PcSpacing.xs)
+                ) {
+                    com.privatecoach.app.core.model.BodyPart.selectableList.forEach { bp ->
+                        val selected = uiState.bodyPart == bp
+                        Box(
+                            modifier = Modifier
+                                .border(1.dp, if (selected) PcAccentCopper else PcDivider, PcShapes.extraSmall)
+                                .clickable { viewModel.setBodyPart(if (selected) null else bp) }
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                bp.chineseName,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (selected) PcAccentCopper else PcTextSecondary
+                            )
+                        }
+                    }
+                }
+            }
 
             item { Text("动作列表", style = MaterialTheme.typography.labelMedium, color = PcTextSecondary); PcLineDivider() }
 

@@ -2,6 +2,7 @@ package com.privatecoach.app.data.mapper
 
 import com.privatecoach.app.core.model.CardioDetail
 import com.privatecoach.app.core.model.Exercise
+import com.privatecoach.app.core.model.BodyPart
 import com.privatecoach.app.core.model.Feeling
 import com.privatecoach.app.core.model.InputMode
 import com.privatecoach.app.core.model.Workout
@@ -17,8 +18,7 @@ fun WorkoutWithExercises.toDomain(): Workout = Workout(
     syncId = workout.syncId,
     date = workout.date,
     type = workout.type,
-    bodyPart = workout.bodyPart,
-    feeling = workout.feeling?.let { runCatching { Feeling.valueOf(it) }.getOrNull() },
+    bodyPart = workout.bodyPart?.let { BodyPart.fromString(it) },
     aiSummary = workout.aiSummary,
     rawTranscript = workout.rawTranscript,
     audioFilePath = workout.audioFilePath,
@@ -41,6 +41,7 @@ fun ExerciseWithCardioDetail.toDomain(): Exercise = Exercise(
     distance = exercise.distance,
     sortOrder = exercise.sortOrder,
     notes = exercise.notes,
+    feeling = exercise.feeling?.let { runCatching { Feeling.valueOf(it) }.getOrNull() },
     cardioDetail = cardioDetail?.toDomain()
 )
 
@@ -59,8 +60,7 @@ fun Workout.toEntity(): WorkoutEntity = WorkoutEntity(
     syncId = syncId,
     date = date,
     type = type,
-    bodyPart = bodyPart,
-    feeling = feeling?.name,
+    bodyPart = bodyPart?.name,
     aiSummary = aiSummary,
     rawTranscript = rawTranscript,
     audioFilePath = audioFilePath,
@@ -81,7 +81,8 @@ fun Exercise.toEntity(workoutId: Long): ExerciseEntity = ExerciseEntity(
     duration = duration,
     distance = distance,
     sortOrder = sortOrder,
-    notes = notes
+    notes = notes,
+    feeling = feeling?.name
 )
 
 fun CardioDetail.toEntity(): CardioDetailEntity = CardioDetailEntity(

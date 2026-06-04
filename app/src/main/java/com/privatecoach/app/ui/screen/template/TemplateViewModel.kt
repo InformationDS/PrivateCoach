@@ -3,6 +3,7 @@ package com.privatecoach.app.ui.screen.template
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.privatecoach.app.core.model.BodyPart
 import com.privatecoach.app.core.model.TemplateExercise
 import com.privatecoach.app.core.model.TrainingTemplate
 import com.privatecoach.app.core.model.WorkoutType
@@ -55,7 +56,7 @@ class TemplateEditViewModel @Inject constructor(
                         it.copy(
                             name = tmpl.name,
                             type = tmpl.type,
-                            bodyPart = tmpl.bodyPart ?: "",
+                            bodyPart = tmpl.bodyPart,
                             exercises = tmpl.exercises.ifEmpty { listOf(TemplateExercise(name = "", weightUnit = "kg")) }
                         )
                     }
@@ -66,7 +67,7 @@ class TemplateEditViewModel @Inject constructor(
 
     fun setName(name: String) = _uiState.update { it.copy(name = name) }
     fun setType(type: WorkoutType) = _uiState.update { it.copy(type = type) }
-    fun setBodyPart(part: String) = _uiState.update { it.copy(bodyPart = part) }
+    fun setBodyPart(part: BodyPart?) = _uiState.update { it.copy(bodyPart = part) }
 
     fun updateExerciseName(index: Int, name: String) {
         _uiState.update { state ->
@@ -107,7 +108,7 @@ class TemplateEditViewModel @Inject constructor(
                 id = templateId ?: 0,
                 name = state.name,
                 type = state.type,
-                bodyPart = state.bodyPart.ifBlank { null },
+                bodyPart = state.bodyPart,
                 exercises = state.exercises.filter { it.name.isNotBlank() }
             )
             if (templateId != null && templateId > 0) {

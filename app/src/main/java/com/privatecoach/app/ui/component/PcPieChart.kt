@@ -47,9 +47,9 @@ val BodyPartColors = mapOf(
     "背部" to PcAccentTeal,
     "腿部" to Color(0xFF86EFAC),
     "肩部" to Color(0xFFFCA5A5),
-    "手臂" to Color(0xFFA78BFA),
+    "二头肌" to Color(0xFFA78BFA),
+    "三头肌" to Color(0xFFC084FC),
     "核心" to Color(0xFFFDE68A),
-    "有氧" to Color(0xFF7DD3D4),
     "全身" to PcTextPrimary
 )
 

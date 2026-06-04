@@ -83,6 +83,9 @@ class WorkoutRepositoryImpl @Inject constructor(
     override suspend fun getTrainingDaysCount(start: LocalDate, end: LocalDate): Int =
         workoutDao.getTrainingDaysCount(start, end)
 
+    override suspend fun getBodyPartTrendData(bodyPart: String): List<ExerciseTrendPoint> =
+        workoutDao.getBodyPartTrendData(bodyPart)
+
     override suspend fun getVolumeData(start: LocalDate, end: LocalDate): List<VolumeDataPoint> =
         workoutDao.getVolumeData(start, end)
 
@@ -94,6 +97,31 @@ class WorkoutRepositoryImpl @Inject constructor(
 
     override suspend fun getMostRecentWorkoutOnce(): Workout? =
         workoutDao.getMostRecentWorkoutOnce()?.toDomain()
+
+    override suspend fun saveWorkout(workout: Workout): Long {
+        val existing = workoutDao.getWorkoutByDate(workout.date)
+        return if (existing != null) {
+            // Merge: append exercises to existing workout
+            val existingDomain = existing.toDomain()
+            val startSortOrder = existingDomain.exercises.maxOfOrNull { it.sortOrder + 1 } ?: 0
+            val mergedExercises = existingDomain.exercises +
+                workout.exercises.mapIndexed { i, ex ->
+                    ex.copy(sortOrder = startSortOrder + i)
+                }
+            val merged = existingDomain.copy(
+                exercises = mergedExercises,
+                // Concatenate summaries if new content provided
+                aiSummary = listOfNotNull(existingDomain.aiSummary, workout.aiSummary)
+                    .filter { it.isNotBlank() }
+                    .joinToString("\n---\n"),
+                updatedAt = java.time.Instant.now()
+            )
+            updateWorkout(merged)
+            existing.workout.id
+        } else {
+            createWorkout(workout)
+        }
+    }
 
     override suspend fun insertWorkouts(workouts: List<Workout>) {
         workouts.forEach { createWorkout(it) }
