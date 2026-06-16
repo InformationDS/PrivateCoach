@@ -10,6 +10,29 @@ android {
     namespace = "com.privatecoach.app"
     compileSdk = 34
 
+    // Load keystore properties
+    val keystoreProps = mutableMapOf<String, String>()
+    val keystoreFile = rootProject.file("keystore.properties")
+    if (keystoreFile.exists()) {
+        keystoreFile.readLines().forEach { line ->
+            val parts = line.split("=", limit = 2)
+            if (parts.size == 2) {
+                keystoreProps[parts[0].trim()] = parts[1].trim()
+            }
+        }
+    }
+
+    signingConfigs {
+        if (keystoreProps.isNotEmpty()) {
+            create("releaseSigning") {
+                storeFile = rootProject.file(keystoreProps["storeFile"]!!)
+                storePassword = keystoreProps["storePassword"]!!
+                keyAlias = keystoreProps["keyAlias"]!!
+                keyPassword = keystoreProps["keyPassword"]!!
+            }
+        }
+    }
+
     defaultConfig {
         applicationId = "com.privatecoach.app"
         minSdk = 29
@@ -27,6 +50,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            if (keystoreProps.isNotEmpty()) {
+                signingConfig = signingConfigs.getByName("releaseSigning")
+            }
         }
     }
 
