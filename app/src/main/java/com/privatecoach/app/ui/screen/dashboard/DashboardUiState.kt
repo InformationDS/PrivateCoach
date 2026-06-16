@@ -8,6 +8,7 @@ data class DashboardUiState(
     val trainingDaysThisWeek: Int = 0,
     val lastWorkoutDaysAgo: Int? = null,
     val hasWorkoutToday: Boolean = false,
-    val recentWorkouts: List<Workout> = emptyList(),
+    val allWorkouts: List<Workout> = emptyList(),
+    val searchQuery: String = "",
     val isLoading: Boolean = true
 )

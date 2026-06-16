@@ -45,16 +45,31 @@ class DashboardViewModel @Inject constructor(
             }
         }
 
-        // Recent workouts via Flow
+        // All workouts via Flow
         viewModelScope.launch {
-            workoutRepository.getRecentWorkouts(5).collect { workouts ->
+            workoutRepository.getAllWorkouts().collect { workouts ->
                 _uiState.update { state ->
                     state.copy(
-                        recentWorkouts = workouts,
+                        allWorkouts = workouts,
                         lastWorkoutDaysAgo = workouts.firstOrNull()?.let { w ->
                             java.time.temporal.ChronoUnit.DAYS.between(w.date, LocalDate.now()).toInt()
                         }
                     )
+                }
+            }
+        }
+    }
+
+    fun onSearch(query: String) {
+        _uiState.update { it.copy(searchQuery = query) }
+        viewModelScope.launch {
+            if (query.isBlank()) {
+                workoutRepository.getAllWorkouts().collect { workouts ->
+                    _uiState.update { it.copy(allWorkouts = workouts) }
+                }
+            } else {
+                workoutRepository.searchWorkouts(query).collect { workouts ->
+                    _uiState.update { it.copy(allWorkouts = workouts) }
                 }
             }
         }

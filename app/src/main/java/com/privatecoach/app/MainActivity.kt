@@ -18,8 +18,8 @@ class MainActivity : ComponentActivity() {
         // Handle widget deep link
         val navigateTo = intent?.getStringExtra("navigate_to")
         val initialRoute = when (navigateTo) {
-            "record" -> Screen.Record
-            else -> Screen.Dashboard
+            "record" -> Screen.Conversation
+            else -> Screen.Conversation
         }
 
         setContent {

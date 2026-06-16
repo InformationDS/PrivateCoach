@@ -1,7 +1,12 @@
 package com.privatecoach.app.core.ai
 
+import com.privatecoach.app.core.model.AdviceContext
+import com.privatecoach.app.core.model.AdviceResult
 import com.privatecoach.app.core.model.AiParsedResult
+import com.privatecoach.app.core.model.QueryContext
 import com.privatecoach.app.core.model.ReportInputData
+import com.privatecoach.app.core.model.ReviewContext
+import com.privatecoach.app.core.model.ReviewResult
 import com.privatecoach.app.domain.repository.SettingsRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.Json
@@ -168,6 +173,163 @@ class GeminiApiServiceImpl @Inject constructor(
                     addJsonObject {
                         putJsonArray("parts") {
                             addJsonObject { put("text", AiPromptBuilder.buildReportPrompt(reportData)) }
+                        }
+                    }
+                }
+            }
+
+            val url = "$baseEndpoint/$modelName:generateContent?key=$apiKey"
+            val response = client.newCall(
+                Request.Builder()
+                    .url(url)
+                    .post(requestBody.toString().toRequestBody("application/json".toMediaType()))
+                    .build()
+            ).execute()
+
+            val responseBody = response.body?.string() ?: ""
+            if (!response.isSuccessful) return@runCatching ""
+
+            val result = json.parseToJsonElement(responseBody) as JsonObject
+            result["candidates"]
+                ?.jsonArray?.firstOrNull()
+                ?.jsonObject?.get("content")
+                ?.jsonObject?.get("parts")
+                ?.jsonArray?.firstOrNull()
+                ?.jsonObject?.get("text")
+                ?.jsonPrimitive?.content
+                ?: ""
+        }
+    }
+
+    override suspend fun generateAdvice(context: AdviceContext): Result<AdviceResult> {
+        return runCatching {
+            val apiKey = settingsRepository.apiKey.first()
+            val modelName = settingsRepository.modelName.first()
+            val baseEndpoint = settingsRepository.apiEndpoint.first()
+
+            if (apiKey.isBlank()) throw IllegalStateException("请先在设置中配置 API Key")
+
+            val systemInstruction = buildJsonObject {
+                putJsonArray("parts") {
+                    addJsonObject { put("text", AiPromptBuilder.buildAdviceSystemPrompt()) }
+                }
+            }
+
+            val requestBody = buildJsonObject {
+                put("system_instruction", systemInstruction)
+                putJsonArray("contents") {
+                    addJsonObject {
+                        putJsonArray("parts") {
+                            addJsonObject {
+                                put("text", AiPromptBuilder.buildAdviceUserPrompt(context))
+                            }
+                        }
+                    }
+                }
+                putJsonObject("generation_config") {
+                    put("response_mime_type", "application/json")
+                }
+            }
+
+            val url = "$baseEndpoint/$modelName:generateContent?key=$apiKey"
+            val response = client.newCall(
+                Request.Builder()
+                    .url(url)
+                    .post(requestBody.toString().toRequestBody("application/json".toMediaType()))
+                    .build()
+            ).execute()
+
+            val responseBody = response.body?.string()
+                ?: throw IllegalStateException("API 返回为空")
+            if (!response.isSuccessful)
+                throw IllegalStateException("API 错误 ${response.code}: $responseBody")
+
+            val result = json.parseToJsonElement(responseBody) as JsonObject
+            val text = result["candidates"]
+                ?.jsonArray?.firstOrNull()
+                ?.jsonObject?.get("content")
+                ?.jsonObject?.get("parts")
+                ?.jsonArray?.firstOrNull()
+                ?.jsonObject?.get("text")
+                ?.jsonPrimitive?.content
+                ?: throw IllegalStateException("无法解析 AI 返回结果")
+
+            responseParser.parseAdvice(text).getOrThrow()
+        }
+    }
+
+    override suspend fun generateReview(context: ReviewContext): Result<ReviewResult> {
+        return runCatching {
+            val apiKey = settingsRepository.apiKey.first()
+            val modelName = settingsRepository.modelName.first()
+            val baseEndpoint = settingsRepository.apiEndpoint.first()
+
+            if (apiKey.isBlank()) throw IllegalStateException("请先在设置中配置 API Key")
+
+            val systemInstruction = buildJsonObject {
+                putJsonArray("parts") {
+                    addJsonObject { put("text", AiPromptBuilder.buildReviewSystemPrompt()) }
+                }
+            }
+
+            val requestBody = buildJsonObject {
+                put("system_instruction", systemInstruction)
+                putJsonArray("contents") {
+                    addJsonObject {
+                        putJsonArray("parts") {
+                            addJsonObject {
+                                put("text", AiPromptBuilder.buildReviewUserPrompt(context))
+                            }
+                        }
+                    }
+                }
+                putJsonObject("generation_config") {
+                    put("response_mime_type", "application/json")
+                }
+            }
+
+            val url = "$baseEndpoint/$modelName:generateContent?key=$apiKey"
+            val response = client.newCall(
+                Request.Builder()
+                    .url(url)
+                    .post(requestBody.toString().toRequestBody("application/json".toMediaType()))
+                    .build()
+            ).execute()
+
+            val responseBody = response.body?.string()
+                ?: throw IllegalStateException("API 返回为空")
+            if (!response.isSuccessful)
+                throw IllegalStateException("API 错误 ${response.code}: $responseBody")
+
+            val result = json.parseToJsonElement(responseBody) as JsonObject
+            val text = result["candidates"]
+                ?.jsonArray?.firstOrNull()
+                ?.jsonObject?.get("content")
+                ?.jsonObject?.get("parts")
+                ?.jsonArray?.firstOrNull()
+                ?.jsonObject?.get("text")
+                ?.jsonPrimitive?.content
+                ?: throw IllegalStateException("无法解析 AI 返回结果")
+
+            responseParser.parseReview(text).getOrThrow()
+        }
+    }
+
+    override suspend fun interpretQuery(context: QueryContext): Result<String> {
+        return runCatching {
+            val apiKey = settingsRepository.apiKey.first()
+            val modelName = settingsRepository.modelName.first()
+            val baseEndpoint = settingsRepository.apiEndpoint.first()
+
+            if (apiKey.isBlank()) return@runCatching ""
+
+            val requestBody = buildJsonObject {
+                putJsonArray("contents") {
+                    addJsonObject {
+                        putJsonArray("parts") {
+                            addJsonObject {
+                                put("text", AiPromptBuilder.buildInterpretQueryPrompt(context))
+                            }
                         }
                     }
                 }

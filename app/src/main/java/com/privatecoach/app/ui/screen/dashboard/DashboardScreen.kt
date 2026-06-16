@@ -1,5 +1,6 @@
 package com.privatecoach.app.ui.screen.dashboard
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,16 +12,21 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Mic
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -28,8 +34,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.foundation.layout.width
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.privatecoach.app.core.model.Workout
@@ -45,8 +51,10 @@ import com.privatecoach.app.ui.component.PcTag
 import com.privatecoach.app.ui.component.StrengthTag
 import com.privatecoach.app.ui.theme.PcAccentCopper
 import com.privatecoach.app.ui.theme.PcBackground
+import com.privatecoach.app.ui.theme.PcDivider
 import com.privatecoach.app.ui.theme.PcShapes
 import com.privatecoach.app.ui.theme.PcSpacing
+import com.privatecoach.app.ui.theme.PcTextDisabled
 import com.privatecoach.app.ui.theme.PcTextSecondary
 import java.time.format.DateTimeFormatter
 
@@ -66,7 +74,7 @@ fun DashboardScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "PrivateCoach",
+                        text = "仪表盘",
                         fontWeight = FontWeight.Light,
                         color = PcAccentCopper
                     )
@@ -113,12 +121,48 @@ fun DashboardScreen(
                     )
                 }
 
-                // Recent workouts header
+                // Search bar
+                item {
+                    Spacer(modifier = Modifier.height(PcSpacing.sm))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(1.dp, PcDivider, PcShapes.small)
+                            .padding(PcSpacing.sm),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Outlined.Search,
+                            contentDescription = null,
+                            tint = PcTextSecondary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        TextField(
+                            value = uiState.searchQuery,
+                            onValueChange = { viewModel.onSearch(it) },
+                            modifier = Modifier.weight(1f),
+                            placeholder = { Text("搜索动作名...", color = PcTextDisabled) },
+                            singleLine = true,
+                            colors = TextFieldDefaults.colors(
+                                focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                                unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent,
+                                cursorColor = PcAccentCopper
+                            )
+                        )
+                    }
+                }
+
+                // Workout list header
                 item {
                     Spacer(modifier = Modifier.height(PcSpacing.sm))
                     Text(
-                        text = "最近训练",
-                        style = androidx.compose.material3.MaterialTheme.typography.titleSmall,
+                        text = "训练记录",
+                        style = MaterialTheme.typography.titleSmall,
                         color = PcTextSecondary,
                         fontWeight = FontWeight.Normal
                     )
@@ -126,13 +170,13 @@ fun DashboardScreen(
                     PcLineDivider()
                 }
 
-                if (uiState.recentWorkouts.isEmpty()) {
+                if (uiState.allWorkouts.isEmpty()) {
                     item {
                         PcEmptyState(message = "还没有训练记录\n点击右下角开始记录")
                     }
                 } else {
-                    items(uiState.recentWorkouts) { workout ->
-                        WorkoutPreviewCard(
+                    items(uiState.allWorkouts) { workout ->
+                        WorkoutHistoryCard(
                             workout = workout,
                             onClick = { onNavigateToWorkoutDetail(workout.id) }
                         )
@@ -169,14 +213,14 @@ private fun TodayStatusCard(
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     text = if (hasWorkoutToday) "已练" else "未练",
-                    style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Medium,
                     color = if (hasWorkoutToday) PcAccentCopper else PcTextSecondary
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = "今日",
-                    style = androidx.compose.material3.MaterialTheme.typography.labelMedium,
+                    style = MaterialTheme.typography.labelMedium,
                     color = PcTextSecondary
                 )
             }
@@ -185,11 +229,11 @@ private fun TodayStatusCard(
 }
 
 @Composable
-private fun WorkoutPreviewCard(
+private fun WorkoutHistoryCard(
     workout: Workout,
     onClick: () -> Unit
 ) {
-    val dateFormatter = DateTimeFormatter.ofPattern("MM-dd")
+    val dateFormatter = DateTimeFormatter.ofPattern("MM月dd日 EEEE")
     PcCard(
         modifier = Modifier
             .fillMaxWidth()
@@ -200,18 +244,35 @@ private fun WorkoutPreviewCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = workout.date.format(dateFormatter),
-                    style = androidx.compose.material3.MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Medium,
-                    color = PcAccentCopper
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                if (workout.type == WorkoutType.STRENGTH) StrengthTag() else CardioTag()
-                workout.bodyPart?.let { bp ->
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = workout.date.format(dateFormatter),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Medium,
+                        color = PcAccentCopper
+                    )
                     Spacer(modifier = Modifier.width(8.dp))
-                    PcTag(text = bp.chineseName)
+                    if (workout.type == WorkoutType.STRENGTH) StrengthTag() else CardioTag()
+                    workout.bodyPart?.let { bp ->
+                        Spacer(modifier = Modifier.width(6.dp))
+                        PcTag(text = bp.chineseName)
+                    }
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = workout.exercises.joinToString(" · ") { it.name },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = PcTextSecondary,
+                    maxLines = 1
+                )
+                workout.exercises.firstOrNull()?.feeling?.let { feel ->
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "感受: ${feel.toChinese()}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = PcTextSecondary
+                    )
                 }
             }
             Icon(
@@ -219,21 +280,6 @@ private fun WorkoutPreviewCard(
                 contentDescription = null,
                 tint = PcTextSecondary,
                 modifier = Modifier.size(20.dp)
-            )
-        }
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = workout.exercises.joinToString(" · ") { it.name },
-            style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-            color = PcTextSecondary,
-            maxLines = 1
-        )
-        workout.exercises.firstOrNull()?.feeling?.let { feel ->
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "感受: ${feel.toChinese()}",
-                style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                color = PcTextSecondary
             )
         }
     }

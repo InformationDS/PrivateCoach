@@ -1,9 +1,12 @@
 package com.privatecoach.app.core.ai
 
+import com.privatecoach.app.core.model.AdviceResult
 import com.privatecoach.app.core.model.AiParsedResult
 import com.privatecoach.app.core.model.BodyPart
+import com.privatecoach.app.core.model.DataSufficiency
 import com.privatecoach.app.core.model.ParsedCardioDetail
 import com.privatecoach.app.core.model.ParsedExercise
+import com.privatecoach.app.core.model.ReviewResult
 import com.privatecoach.app.core.model.WorkoutType
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -80,6 +83,61 @@ class AiResponseParser @Inject constructor() {
             notes = notes,
             summaryMarkdown = summary,
             rawJson = cleanJson
+        )
+    }
+
+    fun parseAdvice(jsonString: String): Result<AdviceResult> = runCatching {
+        val cleanJson = jsonString
+            .replace(Regex("```json\\s*"), "")
+            .replace(Regex("```\\s*"), "")
+            .trim()
+
+        val root = json.parseToJsonElement(cleanJson).jsonObject
+
+        val dataSummary = root["dataSummary"]?.jsonPrimitive?.content ?: ""
+        val analysis = root["analysis"]?.jsonPrimitive?.content ?: ""
+        val suggestions = root["suggestions"]?.jsonArray?.map {
+            it.jsonPrimitive.content
+        } ?: emptyList()
+
+        val sufficiencyRaw = root["dataSufficiency"]?.jsonPrimitive?.content
+        val dataSufficiency = when (sufficiencyRaw?.uppercase()) {
+            "SUFFICIENT" -> DataSufficiency.SUFFICIENT
+            "LIMITED" -> DataSufficiency.LIMITED
+            "INSUFFICIENT" -> DataSufficiency.INSUFFICIENT
+            else -> DataSufficiency.LIMITED
+        }
+
+        AdviceResult(
+            dataSummary = dataSummary,
+            analysis = analysis,
+            suggestions = suggestions,
+            dataSufficiency = dataSufficiency
+        )
+    }
+
+    fun parseReview(jsonString: String): Result<ReviewResult> = runCatching {
+        val cleanJson = jsonString
+            .replace(Regex("```json\\s*"), "")
+            .replace(Regex("```\\s*"), "")
+            .trim()
+
+        val root = json.parseToJsonElement(cleanJson).jsonObject
+
+        val overview = root["overview"]?.jsonPrimitive?.content ?: ""
+        val highlights = root["highlights"]?.jsonArray?.map {
+            it.jsonPrimitive.content
+        } ?: emptyList()
+        val concerns = root["concerns"]?.jsonArray?.map {
+            it.jsonPrimitive.content
+        } ?: emptyList()
+        val comparisonText = root["comparisonText"]?.jsonPrimitive?.content ?: ""
+
+        ReviewResult(
+            overview = overview,
+            highlights = highlights,
+            concerns = concerns,
+            comparisonText = comparisonText
         )
     }
 }
