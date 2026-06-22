@@ -117,6 +117,12 @@ fun ConversationScreen(
         ) {
             // AI availability banner
             if (aiAvailability != AiAvailability.READY) {
+                val bannerText = when (aiAvailability) {
+                    AiAvailability.NO_KEY -> "⚠️ AI 尚未完成配置。请检查 API Endpoint、模型名和 API Key。"
+                    AiAvailability.OFFLINE -> "⚠️ 当前网络不可用。文本本地查询仍可使用，远程 AI 能力暂不可用。"
+                    AiAvailability.API_ERROR -> "⚠️ AI 接口调用失败。请检查 Endpoint、模型名、API Key 是否与服务商文档一致。"
+                    AiAvailability.READY -> ""
+                }
                 androidx.compose.material3.Surface(
                     color = com.privatecoach.app.ui.theme.PcDivider,
                     modifier = Modifier
@@ -124,7 +130,7 @@ fun ConversationScreen(
                         .padding(horizontal = 16.dp, vertical = 4.dp)
                 ) {
                     Text(
-                        text = "⚠️ AI 暂不可用（未配置 API Key 或网络断开）。可在设置中配置，或使用手动录入。",
+                        text = bannerText,
                         color = PcTextSecondary,
                         style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(8.dp)

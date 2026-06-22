@@ -93,7 +93,7 @@ fun SettingsScreen(
                 PcTextField(
                     value = uiState.apiEndpoint,
                     onValueChange = { viewModel.setApiEndpoint(it) },
-                    placeholder = "API Endpoint URL"
+                    placeholder = "OpenAI-compatible Endpoint（如 https://api.xiaomimimo.com/v1）"
                 )
             }
 
@@ -101,7 +101,7 @@ fun SettingsScreen(
                 PcTextField(
                     value = uiState.modelName,
                     onValueChange = { viewModel.setModelName(it) },
-                    placeholder = "模型名称（如 gemini-2.0-flash）"
+                    placeholder = "模型名称（如 mimo-v2.5-pro）"
                 )
             }
 

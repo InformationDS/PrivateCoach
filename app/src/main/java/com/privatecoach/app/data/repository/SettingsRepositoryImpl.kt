@@ -23,6 +23,9 @@ class SettingsRepositoryImpl @Inject constructor(
         dataStore.setApiEndpoint(normalized)
     }
     override suspend fun setApiKey(key: String) = dataStore.setApiKey(key)
-    override suspend fun setModelName(name: String) = dataStore.setModelName(name)
+    override suspend fun setModelName(name: String) {
+        val normalized = name.trim().ifBlank { SettingsDataStore.DEFAULT_MODEL }
+        dataStore.setModelName(normalized)
+    }
     override suspend fun migrateLegacyApiKey() = dataStore.migrateLegacyApiKey()
 }

@@ -45,6 +45,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import java.io.File
 import java.time.Instant
@@ -101,9 +102,15 @@ class ConversationViewModel @Inject constructor(
             generateQuickActions(ctx)
         }
         viewModelScope.launch {
-            settingsRepository.apiKey.collectLatest { key ->
+            combine(
+                settingsRepository.apiKey,
+                settingsRepository.apiEndpoint,
+                settingsRepository.modelName
+            ) { key, endpoint, model ->
+                Triple(key, endpoint, model)
+            }.collectLatest { (key, endpoint, model) ->
                 _aiAvailability.value = when {
-                    key.isBlank() -> AiAvailability.NO_KEY
+                    key.isBlank() || endpoint.isBlank() || model.isBlank() -> AiAvailability.NO_KEY
                     !hasNetwork() -> AiAvailability.OFFLINE
                     else -> AiAvailability.READY
                 }

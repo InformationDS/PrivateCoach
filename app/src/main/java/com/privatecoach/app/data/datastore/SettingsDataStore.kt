@@ -29,8 +29,8 @@ class SettingsDataStore @Inject constructor(
         private val KEY_API_KEY_CIPHERTEXT = stringPreferencesKey("api_key_ciphertext")
         private val KEY_MODEL_NAME = stringPreferencesKey("model_name")
 
-        const val DEFAULT_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models"
-        const val DEFAULT_MODEL = "gemini-2.0-flash"
+        const val DEFAULT_ENDPOINT = "https://api.xiaomimimo.com/v1"
+        const val DEFAULT_MODEL = "mimo-v2.5-pro"
     }
 
     val apiEndpoint: Flow<String> = context.dataStore.data.map { prefs ->
