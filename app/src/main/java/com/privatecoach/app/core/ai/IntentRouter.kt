@@ -54,8 +54,8 @@ class IntentRouter @Inject constructor() {
             return ClassifiedIntent(IntentType.AMBIGUOUS, 0.3f)
         }
 
-        // Default: try RECORD (contains digits/weight-like patterns → probably training log)
-        return ClassifiedIntent(IntentType.RECORD, 0.5f)
+        // Unknown input must be clarified instead of being treated as a database write draft.
+        return ClassifiedIntent(IntentType.AMBIGUOUS, 0.3f)
     }
 
     // ═══════════════════════════════════════════

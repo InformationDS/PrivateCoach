@@ -12,7 +12,7 @@ import java.time.LocalDate
 @Entity(
     tableName = "workouts",
     indices = [
-        Index(value = ["date"]),
+        Index(value = ["date"], unique = true),
         Index(value = ["sync_id"], unique = true),
         Index(value = ["type"]),
         Index(value = ["template_id"])
@@ -24,6 +24,8 @@ data class WorkoutEntity(
     @ColumnInfo(name = "date") val date: LocalDate,
     @ColumnInfo(name = "type") val type: WorkoutType,
     @ColumnInfo(name = "body_part") val bodyPart: String? = null,
+    /** Retained only for safe v1 migration; domain code uses exercise-level feeling. */
+    @ColumnInfo(name = "feeling") val legacyFeeling: String? = null,
     @ColumnInfo(name = "ai_summary") val aiSummary: String? = null,
     @ColumnInfo(name = "raw_transcript") val rawTranscript: String? = null,
     @ColumnInfo(name = "audio_file_path") val audioFilePath: String? = null,

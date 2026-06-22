@@ -53,11 +53,16 @@ class SettingsViewModel @Inject constructor(
     fun saveSettings() {
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true) }
-            val state = _uiState.value
-            settingsRepository.setApiEndpoint(state.apiEndpoint)
-            settingsRepository.setApiKey(state.apiKey)
-            settingsRepository.setModelName(state.modelName)
-            _uiState.update { it.copy(isSaving = false, saveMessage = "设置已保存") }
+            runCatching {
+                val state = _uiState.value
+                settingsRepository.setApiEndpoint(state.apiEndpoint)
+                settingsRepository.setApiKey(state.apiKey)
+                settingsRepository.setModelName(state.modelName.trim())
+            }.onSuccess {
+                _uiState.update { it.copy(isSaving = false, saveMessage = "设置已保存") }
+            }.onFailure { error ->
+                _uiState.update { it.copy(isSaving = false, saveMessage = error.message ?: "设置保存失败") }
+            }
         }
     }
 

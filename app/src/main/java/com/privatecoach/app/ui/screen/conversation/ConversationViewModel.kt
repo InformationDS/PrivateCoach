@@ -2,6 +2,11 @@ package com.privatecoach.app.ui.screen.conversation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import dagger.hilt.android.qualifiers.ApplicationContext
+import com.privatecoach.app.core.audio.AudioRecorder
 import com.privatecoach.app.core.ai.AiApiService
 import com.privatecoach.app.core.ai.IntentRouter
 import com.privatecoach.app.core.ai.SessionContextBuilder
@@ -17,6 +22,10 @@ import com.privatecoach.app.core.model.QueryContext
 import com.privatecoach.app.core.model.QueryEngineResult
 import com.privatecoach.app.core.model.ReviewContext
 import com.privatecoach.app.core.model.SafetyVerdict
+import com.privatecoach.app.core.model.SameDayWriteMode
+import com.privatecoach.app.core.model.AiAvailability
+import com.privatecoach.app.core.model.ConversationUiEvent
+import com.privatecoach.app.core.model.QuickActionAction
 import com.privatecoach.app.core.model.SessionContext
 import com.privatecoach.app.core.model.CardioDetail
 import com.privatecoach.app.core.model.Exercise
@@ -32,6 +41,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.io.File
 import java.time.Instant
@@ -45,7 +58,9 @@ class ConversationViewModel @Inject constructor(
     private val intentRouter: IntentRouter,
     private val queryEngine: QueryEngine,
     private val sessionContextBuilder: SessionContextBuilder,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val audioRecorder: AudioRecorder,
+    @ApplicationContext private val appContext: Context
 ) : ViewModel() {
 
     // ── State ──
@@ -65,8 +80,11 @@ class ConversationViewModel @Inject constructor(
     private val _quickActions = MutableStateFlow<List<QuickActionChip>>(emptyList())
     val quickActions: StateFlow<List<QuickActionChip>> = _quickActions.asStateFlow()
 
-    private val _aiAvailable = MutableStateFlow(true)
-    val aiAvailable: StateFlow<Boolean> = _aiAvailable.asStateFlow()
+    private val _aiAvailability = MutableStateFlow(AiAvailability.NO_KEY)
+    val aiAvailability: StateFlow<AiAvailability> = _aiAvailability.asStateFlow()
+
+    private val _uiEvents = MutableSharedFlow<ConversationUiEvent>(extraBufferCapacity = 1)
+    val uiEvents: SharedFlow<ConversationUiEvent> = _uiEvents.asSharedFlow()
 
     private val _inputText = MutableStateFlow("")
     val inputText: StateFlow<String> = _inputText.asStateFlow()
@@ -77,11 +95,20 @@ class ConversationViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            checkAiAvailability()
             val ctx = sessionContextBuilder.build()
             _sessionContext.value = ctx
             showWelcomeMessage(ctx)
             generateQuickActions(ctx)
+        }
+        viewModelScope.launch {
+            settingsRepository.apiKey.collectLatest { key ->
+                _aiAvailability.value = when {
+                    key.isBlank() -> AiAvailability.NO_KEY
+                    !hasNetwork() -> AiAvailability.OFFLINE
+                    else -> AiAvailability.READY
+                }
+                _sessionContext.value?.let(::generateQuickActions)
+            }
         }
     }
 
@@ -101,11 +128,23 @@ class ConversationViewModel @Inject constructor(
     }
 
     fun onQuickActionClick(chip: QuickActionChip) {
-        handleTextInput(chip.prompt)
+        when (chip.action) {
+            QuickActionAction.PROMPT -> handleTextInput(chip.prompt)
+            QuickActionAction.OPEN_DASHBOARD -> _uiEvents.tryEmit(ConversationUiEvent.OpenDashboard)
+            QuickActionAction.OPEN_CALENDAR -> _uiEvents.tryEmit(ConversationUiEvent.OpenCalendar)
+            QuickActionAction.OPEN_SETTINGS -> _uiEvents.tryEmit(ConversationUiEvent.OpenSettings)
+            QuickActionAction.OPEN_MANUAL_ENTRY -> _uiEvents.tryEmit(ConversationUiEvent.OpenManualEntry)
+        }
     }
 
     fun handleTextInput(text: String) {
         viewModelScope.launch {
+            refreshNetworkAvailability()
+            if (_pendingConfirm.value != null && text.contains(Regex("再加|追加|补充|还做了|加一个"))) {
+                addMessage(Message.UserText(text))
+                appendToPendingWorkout(text)
+                return@launch
+            }
             // 1. Safety check
             val safety = intentRouter.checkSafety(text)
             when (safety) {
@@ -153,7 +192,7 @@ class ConversationViewModel @Inject constructor(
 
     fun handleVoiceInput(audioFile: File) {
         viewModelScope.launch {
-            if (!_aiAvailable.value) {
+            if (!isRemoteAiReady()) {
                 addMessage(Message.SystemMsg("AI 暂不可用，请使用文字输入或手动录入。"))
                 return@launch
             }
@@ -168,6 +207,7 @@ class ConversationViewModel @Inject constructor(
                     showConfirmCard(parsed, parsed.summaryMarkdown)
                 },
                 onFailure = { e ->
+                    markApiError()
                     addMessage(Message.SystemMsg(
                         "语音识别失败：${e.message ?: "未知错误"}，请重试或使用文字输入。"
                     ))
@@ -182,7 +222,7 @@ class ConversationViewModel @Inject constructor(
     // ═══════════════════════════════════════════
 
     private suspend fun handleRecord(text: String, intent: ClassifiedIntent) {
-        if (!_aiAvailable.value) {
+        if (!isRemoteAiReady()) {
             addMessage(Message.SystemMsg("AI 暂不可用，请在训练记录页手动录入。"))
             return
         }
@@ -195,6 +235,7 @@ class ConversationViewModel @Inject constructor(
                 showConfirmCard(parsed, text)
             },
             onFailure = { e ->
+                markApiError()
                 addMessage(Message.SystemMsg(
                     "AI 解析失败：${e.message ?: "未知错误"}，请重试。"
                 ))
@@ -215,19 +256,21 @@ class ConversationViewModel @Inject constructor(
                 addMessage(Message.DataCard(
                     title = queryResult.title,
                     stats = queryResult.stats,
-                    chartType = queryResult.chartType
+                    chartType = queryResult.chartType,
+                    chartData = queryResult.chartData
                 ))
             }
             is QueryEngineResult.ChartNeeded -> {
                 addMessage(Message.ChartCard(
                     title = queryResult.title,
                     chartType = queryResult.chartType,
-                    interpretation = queryResult.interpretation
+                    interpretation = queryResult.interpretation,
+                    chartData = queryResult.chartData
                 ))
             }
             is QueryEngineResult.AiNeeded -> {
                 // Complex query — delegate to AI
-                if (_aiAvailable.value) {
+                if (isRemoteAiReady()) {
                     val aiResult = aiApiService.interpretQuery(queryResult.context)
                     aiResult.fold(
                         onSuccess = { interpretation ->
@@ -235,7 +278,10 @@ class ConversationViewModel @Inject constructor(
                                 addMessage(Message.AiText(interpretation))
                             }
                         },
-                        onFailure = { /* silent fallback */ }
+                        onFailure = {
+                            markApiError()
+                            addMessage(Message.SystemMsg("AI 解释暂不可用，本地统计仍可继续使用。"))
+                        }
                     )
                 }
             }
@@ -243,7 +289,7 @@ class ConversationViewModel @Inject constructor(
     }
 
     private suspend fun handleAdvice(text: String, intent: ClassifiedIntent) {
-        if (!_aiAvailable.value) {
+        if (!isRemoteAiReady()) {
             addMessage(Message.SystemMsg("AI 暂不可用，无法生成个性化建议。"))
             return
         }
@@ -281,6 +327,7 @@ class ConversationViewModel @Inject constructor(
                 addMessage(Message.AdviceCard(advice))
             },
             onFailure = { e ->
+                markApiError()
                 addMessage(Message.SystemMsg(
                     "建议生成失败：${e.message ?: "未知错误"}"
                 ))
@@ -290,7 +337,7 @@ class ConversationViewModel @Inject constructor(
     }
 
     private suspend fun handleReview(text: String, intent: ClassifiedIntent) {
-        if (!_aiAvailable.value) {
+        if (!isRemoteAiReady()) {
             // Fallback to local stats
             val entities = intentRouter.extractEntities(text, IntentType.REVIEW)
             val queryResult = queryEngine.execute(IntentType.QUERY, entities)
@@ -321,7 +368,8 @@ class ConversationViewModel @Inject constructor(
         }
 
         // Previous period
-        val prevStart = start.minusDays(7)
+        val periodDays = java.time.temporal.ChronoUnit.DAYS.between(start, end) + 1
+        val prevStart = start.minusDays(periodDays)
         val prevEnd = start.minusDays(1)
         val prevDays = workoutRepository.getTrainingDaysCount(prevStart, prevEnd)
         val volumeChange = if (prevDays > 0) "${((trainingDays - prevDays).toDouble() / prevDays * 100).toInt()}%" else "首周"
@@ -347,6 +395,7 @@ class ConversationViewModel @Inject constructor(
                 addMessage(Message.SummaryCard(review))
             },
             onFailure = { e ->
+                markApiError()
                 addMessage(Message.SystemMsg("复盘生成失败：${e.message ?: "未知错误"}"))
             }
         )
@@ -410,18 +459,23 @@ class ConversationViewModel @Inject constructor(
         _state.value = ConversationState.AWAITING_CONFIRMATION
     }
 
-    fun confirmWorkout(parsedResult: AiParsedResult) {
+    fun confirmWorkout(mode: SameDayWriteMode = SameDayWriteMode.APPEND) {
         viewModelScope.launch {
-            _state.value = ConversationState.LOADING
-
             val pending = _pendingConfirm.value ?: return@launch
+            val parsedResult = pending.parsedResult
+            validateDraft(parsedResult)?.let { error ->
+                addMessage(Message.SystemMsg(error, com.privatecoach.app.core.model.SystemMsgLevel.WARNING))
+                return@launch
+            }
+            _state.value = ConversationState.LOADING
+            val persistedAudio = persistRecordingIfNeeded(recordingFile)
             val workout = Workout(
                 date = LocalDate.now(),
                 type = parsedResult.type,
                 bodyPart = parsedResult.bodyPart,
                 aiSummary = parsedResult.summaryMarkdown,
                 rawTranscript = pending.sourceText,
-                audioFilePath = recordingFile?.absolutePath,
+                audioFilePath = persistedAudio?.absolutePath,
                 inputMode = if (recordingFile != null) InputMode.VOICE else InputMode.TEXT,
                 createdAt = Instant.now(),
                 updatedAt = Instant.now(),
@@ -449,7 +503,13 @@ class ConversationViewModel @Inject constructor(
                 }
             )
 
-            workoutRepository.saveWorkout(workout)
+            val saveResult = runCatching { workoutRepository.saveWorkout(workout, mode) }
+            if (saveResult.isFailure) {
+                persistedAudio?.delete()
+                addMessage(Message.SystemMsg("保存失败：${saveResult.exceptionOrNull()?.message ?: "未知错误"}"))
+                _state.value = ConversationState.AWAITING_CONFIRMATION
+                return@launch
+            }
             recordingFile = null
 
             _pendingConfirm.value = null
@@ -468,33 +528,26 @@ class ConversationViewModel @Inject constructor(
 
     fun cancelWorkout() {
         _pendingConfirm.value = null
+        recordingFile?.delete()
         recordingFile = null
         _state.value = ConversationState.IDLE
         addMessage(Message.SystemMsg("已取消"))
     }
 
-    fun appendToWorkout(text: String) {
-        viewModelScope.launch {
-            if (!_aiAvailable.value) return@launch
-
-            _state.value = ConversationState.LOADING
-            val result = aiApiService.parseText(text)
-            result.fold(
-                onSuccess = { parsed ->
-                    val current = _pendingConfirm.value ?: return@launch
-                    // Merge new exercises into existing parsed result
-                    val merged = current.parsedResult.copy(
-                        exercises = current.parsedResult.exercises + parsed.exercises
-                    )
-                    _pendingConfirm.value = current.copy(parsedResult = merged)
-                    addMessage(Message.SystemMsg("已添加 ${parsed.exercises.size} 个动作"))
-                },
-                onFailure = { e ->
-                    addMessage(Message.SystemMsg("追加失败：${e.message ?: "未知错误"}"))
-                }
-            )
-            _state.value = ConversationState.IDLE
-        }
+    private suspend fun appendToPendingWorkout(text: String) {
+        if (!isRemoteAiReady()) return
+        _state.value = ConversationState.LOADING
+        aiApiService.parseText(text).fold(
+            onSuccess = { parsed ->
+                val current = _pendingConfirm.value ?: return
+                _pendingConfirm.value = current.copy(parsedResult = current.parsedResult.copy(
+                    exercises = current.parsedResult.exercises + parsed.exercises
+                ))
+                addMessage(Message.SystemMsg("已添加 ${parsed.exercises.size} 个动作"))
+            },
+            onFailure = { markApiError(); addMessage(Message.SystemMsg("追加失败：${it.message ?: "未知错误"}")) }
+        )
+        _state.value = ConversationState.AWAITING_CONFIRMATION
     }
 
     fun editWorkout() {
@@ -502,16 +555,31 @@ class ConversationViewModel @Inject constructor(
     }
 
     fun onStartRecording() {
-        _state.value = ConversationState.RECORDING
+        viewModelScope.launch {
+            if (!isRemoteAiReady()) return@launch
+            runCatching {
+                val dir = File(appContext.cacheDir, "recordings").apply { mkdirs() }
+                val file = File.createTempFile("workout_", ".m4a", dir)
+                audioRecorder.startRecording(file)
+                recordingFile = file
+                _state.value = ConversationState.RECORDING
+            }.onFailure { addMessage(Message.SystemMsg("无法开始录音：${it.message}")) }
+        }
     }
 
-    fun onStopRecording(audioFile: File) {
-        _state.value = ConversationState.IDLE
-        handleVoiceInput(audioFile)
+    fun onStopRecording() {
+        viewModelScope.launch {
+            runCatching { audioRecorder.stopRecording() }
+                .onSuccess { handleVoiceInput(it) }
+                .onFailure { addMessage(Message.SystemMsg("录音失败：${it.message}")) }
+            _state.value = ConversationState.IDLE
+        }
     }
 
     fun onCancelRecording() {
         _state.value = ConversationState.IDLE
+        audioRecorder.release()
+        recordingFile?.delete()
         recordingFile = null
         addMessage(Message.SystemMsg("录音已取消"))
     }
@@ -524,10 +592,7 @@ class ConversationViewModel @Inject constructor(
         _messages.update { it + message }
     }
 
-    private suspend fun checkAiAvailability() {
-        val apiKey = settingsRepository.apiKey.first()
-        _aiAvailable.value = apiKey.isNotBlank()
-    }
+    private fun isRemoteAiReady() = _aiAvailability.value == AiAvailability.READY
 
     private suspend fun showWelcomeMessage(ctx: SessionContext) {
         val parts = mutableListOf<String>()
@@ -566,8 +631,11 @@ class ConversationViewModel @Inject constructor(
     private fun generateQuickActions(ctx: SessionContext) {
         val chips = mutableListOf<QuickActionChip>()
 
-        // Always show record
-        chips.add(QuickActionChip("记录训练", "🏋️", "今天练了", priority = 0))
+        if (isRemoteAiReady()) {
+            chips.add(QuickActionChip("记录训练", "🏋️", "今天练了", priority = 0))
+        } else {
+            chips.add(QuickActionChip("手动录入", "✍️", "", priority = 0, action = QuickActionAction.OPEN_MANUAL_ENTRY))
+        }
 
         // Show progress if there's data
         if (ctx.trainingDaysThisWeek > 0) {
@@ -575,19 +643,19 @@ class ConversationViewModel @Inject constructor(
         }
 
         // Show advice if stagnation detected (promote to front)
-        if (ctx.stagnatingExercises.isNotEmpty()) {
+        if (isRemoteAiReady() && ctx.stagnatingExercises.isNotEmpty()) {
             chips.add(QuickActionChip("突破建议", "💡", "${ctx.stagnatingExercises.first().exerciseName}卡住了怎么办", priority = 2))
-        } else if (ctx.totalWorkoutCount > 5) {
+        } else if (isRemoteAiReady() && ctx.totalWorkoutCount > 5) {
             chips.add(QuickActionChip("获取建议", "💡", "给我一些训练建议", priority = 3))
         }
 
         // Show recap
-        if (ctx.trainingDaysThisWeek > 0) {
+        if (isRemoteAiReady() && ctx.trainingDaysThisWeek > 0) {
             chips.add(QuickActionChip("总结这周", "📋", "帮我总结这周", priority = 4))
         }
 
         // Always show calendar
-        chips.add(QuickActionChip("打开日历", "📅", "打开日历", priority = 5))
+        chips.add(QuickActionChip("打开日历", "📅", "", priority = 5, action = QuickActionAction.OPEN_CALENDAR))
 
         _quickActions.value = chips.sortedBy { it.priority }
     }
@@ -650,5 +718,90 @@ class ConversationViewModel @Inject constructor(
                 ReviewTimeRange(s, now, "本周", "上周")
             }
         }
+    }
+
+    fun updateDraftExercise(index: Int, exercise: ParsedExercise) {
+        _pendingConfirm.update { pending ->
+            pending?.copy(parsedResult = pending.parsedResult.copy(
+                exercises = pending.parsedResult.exercises.toMutableList().also {
+                    if (index in it.indices) it[index] = exercise
+                }
+            ))
+        }
+    }
+
+    fun addDraftExercise() {
+        _pendingConfirm.update { pending ->
+            pending?.copy(parsedResult = pending.parsedResult.copy(
+                exercises = pending.parsedResult.exercises + ParsedExercise("", null, "kg", null, null, null, null)
+            ))
+        }
+    }
+
+    fun removeDraftExercise(index: Int) {
+        _pendingConfirm.update { pending ->
+            pending?.copy(parsedResult = pending.parsedResult.copy(
+                exercises = pending.parsedResult.exercises.filterIndexed { itemIndex, _ -> itemIndex != index }
+            ))
+        }
+    }
+
+    fun updateDraftFeeling(feeling: com.privatecoach.app.core.model.Feeling) {
+        _pendingConfirm.update { pending ->
+            pending?.copy(parsedResult = pending.parsedResult.copy(
+                exercises = pending.parsedResult.exercises.map { it.copy(feeling = feeling) }
+            ))
+        }
+    }
+
+    private fun hasNetwork(): Boolean {
+        val manager = appContext.getSystemService(ConnectivityManager::class.java) ?: return false
+        val network = manager.activeNetwork ?: return false
+        return manager.getNetworkCapabilities(network)
+            ?.let {
+                it.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                    it.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+            } == true
+    }
+
+    private fun refreshNetworkAvailability() {
+        if (_aiAvailability.value != AiAvailability.NO_KEY) {
+            _aiAvailability.value = if (hasNetwork()) AiAvailability.READY else AiAvailability.OFFLINE
+        }
+    }
+
+    private fun markApiError() {
+        _aiAvailability.value = AiAvailability.API_ERROR
+        _sessionContext.value?.let(::generateQuickActions)
+    }
+
+    private fun validateDraft(result: AiParsedResult): String? {
+        if (result.exercises.isEmpty()) return "至少需要一个有效动作"
+        if (result.exercises.any { it.name.isBlank() }) return "请补全动作名称"
+        if (result.exercises.any {
+                (it.weight != null && it.weight <= 0) ||
+                    (it.sets != null && it.sets <= 0) ||
+                    (it.reps != null && it.reps <= 0) ||
+                    (it.duration != null && it.duration <= 0)
+            }) return "重量、组数、次数和时长必须为正数"
+        val heartRate = result.cardioDetail?.avgHeartRate
+        if (heartRate != null && heartRate !in 30..240) return "平均心率应在 30–240 之间"
+        return null
+    }
+
+    private fun persistRecordingIfNeeded(file: File?): File? {
+        if (file == null || !file.exists()) return null
+        val targetDir = File(appContext.filesDir, "recordings").apply { mkdirs() }
+        val target = File(targetDir, "${System.currentTimeMillis()}.m4a")
+        if (file.renameTo(target)) return target
+        file.copyTo(target, overwrite = true)
+        file.delete()
+        return target
+    }
+
+    override fun onCleared() {
+        audioRecorder.release()
+        if (_pendingConfirm.value == null) recordingFile?.delete()
+        super.onCleared()
     }
 }

@@ -18,6 +18,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.privatecoach.app.core.model.Message
 import com.privatecoach.app.core.model.TrendDirection
+import com.privatecoach.app.core.model.ChartData
+import com.privatecoach.app.ui.component.ChartBar
+import com.privatecoach.app.ui.component.ChartLine
+import com.privatecoach.app.ui.component.ChartSegment
+import com.privatecoach.app.ui.component.PcBarChart
+import com.privatecoach.app.ui.component.PcLineChart
+import com.privatecoach.app.ui.component.PcPieChart
+import com.privatecoach.app.ui.component.ChartLineColors
+import com.privatecoach.app.ui.component.getBodyPartColor
 import com.privatecoach.app.ui.theme.PcAccentCopper
 import com.privatecoach.app.ui.theme.PcDivider
 import com.privatecoach.app.ui.theme.PcShapes
@@ -61,6 +70,25 @@ fun DataCard(message: Message.DataCard) {
                     color = if (stat.isHighlighted) PcAccentCopper else PcTextPrimary,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = if (stat.isHighlighted) FontWeight.Medium else FontWeight.Normal
+                )
+            }
+        }
+
+        message.chartData?.let { data ->
+            Spacer(modifier = Modifier.height(12.dp))
+            when (data) {
+                is ChartData.Line -> PcLineChart(
+                    lines = listOf(ChartLine(data.seriesLabel, data.values, ChartLineColors.first())),
+                    xAxisLabels = data.labels,
+                    showLegend = false
+                )
+                is ChartData.Bars -> PcBarChart(
+                    bars = data.labels.zip(data.values).map { (label, value) -> ChartBar(label, value) }
+                )
+                is ChartData.Pie -> PcPieChart(
+                    segments = data.labels.zip(data.values).map { (label, value) ->
+                        ChartSegment(label, value, getBodyPartColor(label))
+                    }
                 )
             }
         }

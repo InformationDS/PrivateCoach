@@ -16,11 +16,13 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -52,8 +54,12 @@ fun ConfirmCard(
     onCancel: () -> Unit,
     onAppend: () -> Unit,
     onOverwrite: () -> Unit,
-    onAddExercise: ((String) -> Unit)? = null
+    onExerciseChange: (Int, ParsedExercise) -> Unit = { _, _ -> },
+    onRemoveExercise: (Int) -> Unit = {},
+    onAddExercise: () -> Unit = {},
+    onFeelingChange: (Feeling) -> Unit = {}
 ) {
+    var editAll by remember { mutableStateOf(false) }
     val typeLabel = when (parsedResult.type) {
         WorkoutType.STRENGTH -> "🏋️"
         WorkoutType.CARDIO -> "🏃"
@@ -102,10 +108,12 @@ fun ConfirmCard(
 
         // Exercises list
         if (parsedResult.type == WorkoutType.STRENGTH) {
-            parsedResult.exercises.forEach { exercise ->
+            parsedResult.exercises.forEachIndexed { index, exercise ->
                 ExerciseRow(
                     exercise = exercise,
-                    onEditExercise = { /* inline edit handled via ViewModel */ }
+                    forceEditing = editAll,
+                    onExerciseChange = { onExerciseChange(index, it) },
+                    onRemove = { onRemoveExercise(index) }
                 )
                 Spacer(modifier = Modifier.height(4.dp))
             }
@@ -124,12 +132,12 @@ fun ConfirmCard(
         }
 
         // Feeling selector
-        FeelRow(feeling = parsedResult.exercises.firstOrNull()?.feeling)
+        FeelRow(feeling = parsedResult.exercises.firstOrNull()?.feeling, onFeelingChange = onFeelingChange)
 
         Spacer(modifier = Modifier.height(8.dp))
 
         // Add exercise button
-        TextButton(onClick = { onAddExercise?.invoke("") }) {
+        TextButton(onClick = onAddExercise) {
             Text("+ 添加动作", color = PcTextSecondary, style = MaterialTheme.typography.bodySmall)
         }
 
@@ -182,7 +190,7 @@ fun ConfirmCard(
                     )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                TextButton(onClick = onEdit) {
+                TextButton(onClick = { editAll = true; onEdit() }) {
                     Text("✏️ 编辑", color = PcTextSecondary, style = MaterialTheme.typography.bodySmall)
                 }
                 Spacer(modifier = Modifier.width(8.dp))
@@ -197,8 +205,45 @@ fun ConfirmCard(
 @Composable
 private fun ExerciseRow(
     exercise: ParsedExercise,
-    onEditExercise: () -> Unit
+    forceEditing: Boolean,
+    onExerciseChange: (ParsedExercise) -> Unit,
+    onRemove: () -> Unit
 ) {
+    var editing by remember(exercise) { mutableStateOf(exercise.name.isBlank()) }
+    LaunchedEffect(forceEditing) { if (forceEditing) editing = true }
+    if (editing) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            OutlinedTextField(
+                value = exercise.name,
+                onValueChange = { onExerciseChange(exercise.copy(name = it)) },
+                label = { Text("动作名称") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+            Row(modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = exercise.weight?.toString() ?: "",
+                    onValueChange = { onExerciseChange(exercise.copy(weight = it.toDoubleOrNull())) },
+                    label = { Text("重量") }, modifier = Modifier.weight(1f), singleLine = true
+                )
+                OutlinedTextField(
+                    value = exercise.sets?.toString() ?: "",
+                    onValueChange = { onExerciseChange(exercise.copy(sets = it.toIntOrNull())) },
+                    label = { Text("组") }, modifier = Modifier.weight(1f), singleLine = true
+                )
+                OutlinedTextField(
+                    value = exercise.reps?.toString() ?: "",
+                    onValueChange = { onExerciseChange(exercise.copy(reps = it.toIntOrNull())) },
+                    label = { Text("次") }, modifier = Modifier.weight(1f), singleLine = true
+                )
+            }
+            Row {
+                TextButton(onClick = { editing = false }) { Text("完成") }
+                TextButton(onClick = onRemove) { Text("删除", color = PcFeelingTired) }
+            }
+        }
+        return
+    }
     val weightText = if (exercise.weight != null) "${String.format("%.0f", exercise.weight)}${exercise.weightUnit}" else "--kg"
     val setsText = if (exercise.sets != null) "${exercise.sets}组" else "--组"
     val repsText = if (exercise.reps != null) "${exercise.reps}次" else "--次"
@@ -221,7 +266,7 @@ private fun ExerciseRow(
             color = PcTextSecondary,
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier
-                .clickable { onEditExercise() }
+                .clickable { editing = true }
                 .padding(4.dp)
         )
     }
@@ -239,7 +284,7 @@ private fun CardioDetailRow(detail: String) {
 }
 
 @Composable
-private fun FeelRow(feeling: Feeling?) {
+private fun FeelRow(feeling: Feeling?, onFeelingChange: (Feeling) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     val currentFeel = feeling ?: Feeling.GOOD
     val feelLabel = when (currentFeel) {
@@ -280,7 +325,7 @@ private fun FeelRow(feeling: Feeling?) {
                             }
                         )
                     },
-                    onClick = { expanded = false /* feeling change handled by ViewModel */ }
+                    onClick = { onFeelingChange(f); expanded = false }
                 )
             }
         }

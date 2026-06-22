@@ -1,5 +1,11 @@
 package com.privatecoach.app.ui.screen.conversation
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,10 +21,14 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.privatecoach.app.core.model.ConversationState
+import com.privatecoach.app.core.model.AiAvailability
+import com.privatecoach.app.core.model.ConversationUiEvent
+import com.privatecoach.app.core.model.SameDayWriteMode
 import com.privatecoach.app.ui.screen.conversation.components.ChatInputBar
 import com.privatecoach.app.ui.screen.conversation.components.MessageList
 import com.privatecoach.app.ui.screen.conversation.components.QuickActionChips
@@ -45,8 +55,23 @@ fun ConversationScreen(
     val pendingConfirm by viewModel.pendingConfirm.collectAsState()
     val sessionContext by viewModel.sessionContext.collectAsState()
     val quickActions by viewModel.quickActions.collectAsState()
-    val aiAvailable by viewModel.aiAvailable.collectAsState()
+    val aiAvailability by viewModel.aiAvailability.collectAsState()
     val inputText by viewModel.inputText.collectAsState()
+    val context = LocalContext.current
+    val recordPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted -> if (granted) viewModel.onStartRecording() else viewModel.onCancelRecording() }
+
+    LaunchedEffect(viewModel) {
+        viewModel.uiEvents.collect { event ->
+            when (event) {
+                ConversationUiEvent.OpenDashboard -> onNavigateToDashboard()
+                ConversationUiEvent.OpenCalendar -> onNavigateToCalendar()
+                ConversationUiEvent.OpenSettings -> onNavigateToSettings()
+                ConversationUiEvent.OpenManualEntry -> onNavigateToManualEntry()
+            }
+        }
+    }
 
     val todayLabel = LocalDate.now().format(DateTimeFormatter.ofPattern("M月d日 EEEE"))
 
@@ -91,7 +116,7 @@ fun ConversationScreen(
                 .imePadding()
         ) {
             // AI availability banner
-            if (!aiAvailable) {
+            if (aiAvailability != AiAvailability.READY) {
                 androidx.compose.material3.Surface(
                     color = com.privatecoach.app.ui.theme.PcDivider,
                     modifier = Modifier
@@ -130,35 +155,45 @@ fun ConversationScreen(
             MessageList(
                 messages = messages,
                 pendingConfirm = pendingConfirm,
-                onConfirm = { viewModel.confirmWorkout(it) },
+                onConfirm = { viewModel.confirmWorkout() },
                 onEdit = { /* navigate to manual entry */ },
                 onCancel = { viewModel.cancelWorkout() },
                 onAppend = {
                     // User chose "append" — just confirm with merge
-                    pendingConfirm?.let { viewModel.confirmWorkout(it.parsedResult) }
+                    viewModel.confirmWorkout(SameDayWriteMode.APPEND)
                 },
                 onOverwrite = {
                     // User chose "overwrite" — handled by existing WorkoutRepository merge behavior
-                    pendingConfirm?.let { viewModel.confirmWorkout(it.parsedResult) }
+                    viewModel.confirmWorkout(SameDayWriteMode.OVERWRITE)
                 },
+                onExerciseChange = viewModel::updateDraftExercise,
+                onRemoveExercise = viewModel::removeDraftExercise,
+                onAddExercise = viewModel::addDraftExercise,
+                onFeelingChange = viewModel::updateDraftFeeling,
                 modifier = Modifier.weight(1f)
             )
 
             // Input area
             VoiceRecordButton(
                 isRecording = state == ConversationState.RECORDING,
-                onStartRecording = { viewModel.onStartRecording() },
-                onStopRecording = { /* handled by AudioRecorder integration */ },
+                onStartRecording = {
+                    if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                        viewModel.onStartRecording()
+                    } else {
+                        recordPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                    }
+                },
+                onStopRecording = { viewModel.onStopRecording() },
                 onCancelRecording = { viewModel.onCancelRecording() },
-                enabled = aiAvailable
+                enabled = aiAvailability == AiAvailability.READY
             )
 
             ChatInputBar(
                 inputText = inputText,
                 onInputChange = { viewModel.onInputChange(it) },
                 onSend = { viewModel.onSend() },
-                onAttachmentClick = { /* show template picker */ },
-                enabled = aiAvailable
+                onAttachmentClick = onNavigateToManualEntry,
+                enabled = true
             )
 
             Spacer(modifier = Modifier.height(8.dp))

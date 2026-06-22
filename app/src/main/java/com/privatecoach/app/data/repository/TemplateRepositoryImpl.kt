@@ -7,6 +7,8 @@ import com.privatecoach.app.data.mapper.toDomain
 import com.privatecoach.app.data.mapper.toEntity
 import com.privatecoach.app.data.mapper.toTemplateEntity
 import com.privatecoach.app.domain.repository.TemplateRepository
+import com.privatecoach.app.data.local.PrivateCoachDatabase
+import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -14,6 +16,7 @@ import javax.inject.Singleton
 
 @Singleton
 class TemplateRepositoryImpl @Inject constructor(
+    private val database: PrivateCoachDatabase,
     private val templateDao: TrainingTemplateDao,
     private val templateExerciseDao: TemplateExerciseDao
 ) : TemplateRepository {
@@ -32,6 +35,10 @@ class TemplateRepositoryImpl @Inject constructor(
         templateDao.getTemplateById(id)?.toDomain()
 
     override suspend fun saveTemplate(template: TrainingTemplate): Long {
+        return database.withTransaction { saveTemplateInternal(template) }
+    }
+
+    private suspend fun saveTemplateInternal(template: TrainingTemplate): Long {
         val entity = template.toTemplateEntity()
         val templateId = templateDao.insertTemplate(entity)
         templateExerciseDao.insertAll(
@@ -43,13 +50,15 @@ class TemplateRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateTemplate(template: TrainingTemplate) {
-        templateDao.updateTemplate(template.toTemplateEntity())
-        templateExerciseDao.deleteByTemplateId(template.id)
-        templateExerciseDao.insertAll(
-            template.exercises.mapIndexed { index, ex ->
-                ex.toEntity(template.id).copy(sortOrder = index)
-            }
-        )
+        database.withTransaction {
+            templateDao.updateTemplate(template.toTemplateEntity())
+            templateExerciseDao.deleteByTemplateId(template.id)
+            templateExerciseDao.insertAll(
+                template.exercises.mapIndexed { index, ex ->
+                    ex.toEntity(template.id).copy(sortOrder = index)
+                }
+            )
+        }
     }
 
     override suspend fun deleteTemplate(id: Long) {

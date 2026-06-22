@@ -37,6 +37,10 @@ fun MessageList(
     onCancel: () -> Unit,
     onAppend: () -> Unit,
     onOverwrite: () -> Unit,
+    onExerciseChange: (Int, com.privatecoach.app.core.model.ParsedExercise) -> Unit = { _, _ -> },
+    onRemoveExercise: (Int) -> Unit = {},
+    onAddExercise: () -> Unit = {},
+    onFeelingChange: (com.privatecoach.app.core.model.Feeling) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
@@ -72,7 +76,11 @@ fun MessageList(
                         onEdit = onEdit,
                         onCancel = onCancel,
                         onAppend = onAppend,
-                        onOverwrite = onOverwrite
+                        onOverwrite = onOverwrite,
+                        onExerciseChange = onExerciseChange,
+                        onRemoveExercise = onRemoveExercise,
+                        onAddExercise = onAddExercise,
+                        onFeelingChange = onFeelingChange
                     )
                 }
                 is Message.SystemMsg -> {
@@ -103,7 +111,11 @@ fun MessageList(
                     onEdit = onEdit,
                     onCancel = onCancel,
                     onAppend = onAppend,
-                    onOverwrite = onOverwrite
+                    onOverwrite = onOverwrite,
+                    onExerciseChange = onExerciseChange,
+                    onRemoveExercise = onRemoveExercise,
+                    onAddExercise = onAddExercise,
+                    onFeelingChange = onFeelingChange
                 )
             }
         }

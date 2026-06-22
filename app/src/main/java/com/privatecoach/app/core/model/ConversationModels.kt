@@ -48,7 +48,7 @@ sealed class Message {
         val title: String,
         val stats: List<StatItem>,
         val chartType: ChartType? = null,
-        val chartData: Any? = null,
+        val chartData: ChartData? = null,
         override val id: String = java.util.UUID.randomUUID().toString(),
         override val timestamp: Long = System.currentTimeMillis()
     ) : Message()
@@ -58,6 +58,7 @@ sealed class Message {
         val title: String,
         val chartType: ChartType,
         val interpretation: String,
+        val chartData: ChartData? = null,
         override val id: String = java.util.UUID.randomUUID().toString(),
         override val timestamp: Long = System.currentTimeMillis()
     ) : Message()
@@ -106,6 +107,15 @@ enum class ConversationState {
     IDLE, LOADING, RECORDING, AWAITING_CONFIRMATION
 }
 
+enum class AiAvailability { NO_KEY, OFFLINE, READY, API_ERROR }
+
+sealed interface ConversationUiEvent {
+    data object OpenDashboard : ConversationUiEvent
+    data object OpenCalendar : ConversationUiEvent
+    data object OpenSettings : ConversationUiEvent
+    data object OpenManualEntry : ConversationUiEvent
+}
+
 // ═══════════════════════════════════════════════
 // Intent & Safety
 // ═══════════════════════════════════════════════
@@ -132,8 +142,17 @@ data class QuickActionChip(
     val label: String,
     val emoji: String,
     val prompt: String,
-    val priority: Int = 0  // lower = shown first
+    val priority: Int = 0,
+    val action: QuickActionAction = QuickActionAction.PROMPT
 )
+
+enum class QuickActionAction { PROMPT, OPEN_DASHBOARD, OPEN_CALENDAR, OPEN_SETTINGS, OPEN_MANUAL_ENTRY }
+
+sealed interface ChartData {
+    data class Line(val labels: List<String>, val values: List<Double>, val seriesLabel: String) : ChartData
+    data class Bars(val labels: List<String>, val values: List<Float>) : ChartData
+    data class Pie(val labels: List<String>, val values: List<Float>) : ChartData
+}
 
 // ═══════════════════════════════════════════════
 // Session Context (cold-start, injected into AI system prompt)
@@ -230,12 +249,14 @@ sealed class QueryEngineResult {
     data class ChartNeeded(
         val title: String,
         val chartType: ChartType,
-        val interpretation: String
+        val interpretation: String,
+        val chartData: ChartData
     ) : QueryEngineResult()
     data class DataCardNeeded(
         val title: String,
         val stats: List<StatItem>,
-        val chartType: ChartType? = null
+        val chartType: ChartType? = null,
+        val chartData: ChartData? = null
     ) : QueryEngineResult()
     data class AiNeeded(val context: QueryContext) : QueryEngineResult()
 }

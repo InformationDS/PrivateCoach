@@ -23,8 +23,8 @@ import com.privatecoach.app.data.local.entity.WorkoutEntity
         TrainingTemplateEntity::class,
         TemplateExerciseEntity::class
     ],
-    version = 2,
-    exportSchema = false
+    version = 3,
+    exportSchema = true
 )
 @TypeConverters(Converters::class)
 abstract class PrivateCoachDatabase : RoomDatabase() {

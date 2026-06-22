@@ -31,6 +31,7 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
+import androidx.compose.ui.graphics.Color
 import com.privatecoach.app.MainActivity
 import com.privatecoach.app.domain.repository.WorkoutRepository
 import dagger.hilt.EntryPoint
@@ -157,7 +158,7 @@ interface WidgetEntryPoint {
 }
 
 // Glance colors
-private val NavyBackground = ColorProvider(android.graphics.Color.parseColor("#0F172A"))
-private val CopperAccent = ColorProvider(android.graphics.Color.parseColor("#D4A574"))
-private val CopperBorder = ColorProvider(android.graphics.Color.parseColor("#D4A574"))
-private val SecondaryText = ColorProvider(android.graphics.Color.parseColor("#8E9BAE"))
+private val NavyBackground = ColorProvider(Color(0xFF0F172A))
+private val CopperAccent = ColorProvider(Color(0xFFD4A574))
+private val CopperBorder = ColorProvider(Color(0xFFD4A574))
+private val SecondaryText = ColorProvider(Color(0xFF8E9BAE))

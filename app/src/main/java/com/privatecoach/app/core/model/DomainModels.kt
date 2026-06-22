@@ -3,6 +3,8 @@ package com.privatecoach.app.core.model
 import java.time.Instant
 import java.time.LocalDate
 
+enum class SameDayWriteMode { APPEND, OVERWRITE }
+
 data class Workout(
     val id: Long = 0,
     val syncId: String? = null,

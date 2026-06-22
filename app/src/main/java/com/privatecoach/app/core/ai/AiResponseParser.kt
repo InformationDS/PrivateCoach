@@ -39,7 +39,7 @@ class AiResponseParser @Inject constructor() {
         val bodyPartRaw = root["bodyPart"]?.jsonPrimitive?.content
         val bodyPart = bodyPartRaw?.let { BodyPart.fromChinese(it) }
 
-        val exercises = root["exercises"]?.jsonArray?.map { elem ->
+        var exercises = root["exercises"]?.jsonArray?.map { elem ->
             val obj = elem.jsonObject
             val exFeeling = obj["feeling"]?.jsonPrimitive?.content?.let { f ->
                 when (f) {
@@ -71,6 +71,30 @@ class AiResponseParser @Inject constructor() {
                 calories = cd["calories"]?.jsonPrimitive?.intOrNull
             )
         }
+
+        if (type == WorkoutType.CARDIO && exercises.isEmpty() && cardioDetail != null) {
+            exercises = listOf(
+                ParsedExercise(
+                    name = cardioDetail.cardioType?.takeIf { it.isNotBlank() } ?: "有氧训练",
+                    weight = null,
+                    weightUnit = "kg",
+                    sets = null,
+                    reps = null,
+                    duration = cardioDetail.duration,
+                    distance = cardioDetail.distance
+                )
+            )
+        }
+        require(exercises.isNotEmpty()) { "AI 返回中没有有效动作" }
+        require(exercises.all { it.name.isNotBlank() }) { "AI 返回的动作名称为空" }
+        require(exercises.all {
+            (it.weight == null || it.weight > 0) &&
+                (it.sets == null || it.sets > 0) &&
+                (it.reps == null || it.reps > 0) &&
+                (it.duration == null || it.duration > 0) &&
+                (it.distance == null || it.distance > 0)
+        }) { "AI 返回包含非法数值" }
+        require(cardioDetail?.avgHeartRate == null || cardioDetail.avgHeartRate in 30..240) { "AI 返回的心率不合理" }
 
         val notes = root["notes"]?.jsonPrimitive?.content
         val summary = root["summary"]?.jsonPrimitive?.content ?: ""

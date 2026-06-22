@@ -3,6 +3,8 @@ package com.privatecoach.app.di
 import android.content.Context
 import androidx.room.Room
 import com.privatecoach.app.data.local.PrivateCoachDatabase
+import com.privatecoach.app.data.local.MIGRATION_1_2
+import com.privatecoach.app.data.local.MIGRATION_2_3
 import com.privatecoach.app.data.local.dao.CardioDetailDao
 import com.privatecoach.app.data.local.dao.ExerciseDao
 import com.privatecoach.app.data.local.dao.TemplateExerciseDao
@@ -22,7 +24,7 @@ object DatabaseModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): PrivateCoachDatabase =
         Room.databaseBuilder(context, PrivateCoachDatabase::class.java, "privatecoach.db")
-            .fallbackToDestructiveMigration()
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
             .build()
 
     @Provides fun provideWorkoutDao(db: PrivateCoachDatabase): WorkoutDao = db.workoutDao()

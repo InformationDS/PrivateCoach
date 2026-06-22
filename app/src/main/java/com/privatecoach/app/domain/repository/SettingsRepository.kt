@@ -10,4 +10,5 @@ interface SettingsRepository {
     suspend fun setApiEndpoint(endpoint: String)
     suspend fun setApiKey(key: String)
     suspend fun setModelName(name: String)
+    suspend fun migrateLegacyApiKey()
 }

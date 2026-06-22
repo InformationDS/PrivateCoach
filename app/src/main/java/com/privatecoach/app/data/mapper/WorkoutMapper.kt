@@ -61,6 +61,7 @@ fun Workout.toEntity(): WorkoutEntity = WorkoutEntity(
     date = date,
     type = type,
     bodyPart = bodyPart?.name,
+    legacyFeeling = null,
     aiSummary = aiSummary,
     rawTranscript = rawTranscript,
     audioFilePath = audioFilePath,

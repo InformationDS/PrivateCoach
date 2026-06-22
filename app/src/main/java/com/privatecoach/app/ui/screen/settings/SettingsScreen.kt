@@ -111,6 +111,7 @@ fun SettingsScreen(
                     onValueChange = { viewModel.setApiKey(it) },
                     placeholder = "API Key",
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    visualTransformation = if (uiState.apiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
                     trailingIcon = {
                         IconButton(onClick = { viewModel.toggleApiKeyVisibility() }) {
                             Icon(

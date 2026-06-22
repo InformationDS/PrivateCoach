@@ -3,6 +3,7 @@ package com.privatecoach.app.core.query
 import com.privatecoach.app.core.model.BodyPart
 import com.privatecoach.app.core.model.BodyPartCount
 import com.privatecoach.app.core.model.ChartType
+import com.privatecoach.app.core.model.ChartData
 import com.privatecoach.app.core.model.IntentType
 import com.privatecoach.app.core.model.QueryContext
 import com.privatecoach.app.core.model.QueryEngineResult
@@ -129,7 +130,12 @@ class QueryEngine @Inject constructor(
         return QueryEngineResult.DataCardNeeded(
             title = "${exerciseName}趋势",
             stats = stats,
-            chartType = ChartType.LINE
+            chartType = ChartType.LINE,
+            chartData = ChartData.Line(
+                labels = trendData.map { "${it.date.monthValue}/${it.date.dayOfMonth}" },
+                values = trendData.map { it.weight ?: 0.0 },
+                seriesLabel = exerciseName
+            )
         )
         // Note: the actual chart data will be rendered by ChartCard using trendData
     }
@@ -158,7 +164,11 @@ class QueryEngine @Inject constructor(
         return QueryEngineResult.DataCardNeeded(
             title = "训练容量统计",
             stats = stats,
-            chartType = ChartType.BAR
+            chartType = ChartType.BAR,
+            chartData = ChartData.Bars(
+                labels = volumeData.map { "${it.workoutDate.monthValue}/${it.workoutDate.dayOfMonth}" },
+                values = volumeData.map { ((it.weight ?: 0.0) * (it.sets ?: 0) * (it.reps ?: 0)).toFloat() }
+            )
         )
     }
 
@@ -188,7 +198,11 @@ class QueryEngine @Inject constructor(
         return QueryEngineResult.DataCardNeeded(
             title = "训练部位分布",
             stats = stats,
-            chartType = ChartType.PIE
+            chartType = ChartType.PIE,
+            chartData = ChartData.Pie(
+                labels = distribution.map { BodyPart.fromChinese(it.bodyPart)?.chineseName ?: it.bodyPart },
+                values = distribution.map { it.count.toFloat() }
+            )
         )
     }
 
@@ -231,7 +245,7 @@ class QueryEngine @Inject constructor(
             return QueryEngineResult.LocalText("该时间段没有训练频率数据。")
         }
 
-        val totalDays = frequency.size
+        val totalDays = range.start.until(range.end).days + 1
         val totalSessions = frequency.sumOf { it.sessions }
 
         val avgPerWeek = if (totalDays > 0) {
@@ -283,8 +297,8 @@ class QueryEngine @Inject constructor(
                 TimeRange(start, today, "this_week", "本周")
             }
             "last_week" -> {
-                val start = today.with(TemporalAdjusters.previous(DayOfWeek.MONDAY))
-                    .with(TemporalAdjusters.previous(DayOfWeek.MONDAY))
+                val thisWeekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+                val start = thisWeekStart.minusWeeks(1)
                 val end = start.plusDays(6)
                 TimeRange(start, end, "last_week", "上周")
             }

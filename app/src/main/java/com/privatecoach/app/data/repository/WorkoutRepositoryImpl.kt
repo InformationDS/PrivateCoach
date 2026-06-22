@@ -5,6 +5,9 @@ import com.privatecoach.app.core.model.ExerciseTrendPoint
 import com.privatecoach.app.core.model.TrainingFrequencyPoint
 import com.privatecoach.app.core.model.VolumeDataPoint
 import com.privatecoach.app.core.model.Workout
+import com.privatecoach.app.core.model.SameDayWriteMode
+import com.privatecoach.app.data.local.PrivateCoachDatabase
+import androidx.room.withTransaction
 import com.privatecoach.app.data.local.dao.CardioDetailDao
 import com.privatecoach.app.data.local.dao.ExerciseDao
 import com.privatecoach.app.data.local.dao.WorkoutDao
@@ -19,6 +22,7 @@ import javax.inject.Singleton
 
 @Singleton
 class WorkoutRepositoryImpl @Inject constructor(
+    private val database: PrivateCoachDatabase,
     private val workoutDao: WorkoutDao,
     private val exerciseDao: ExerciseDao,
     private val cardioDetailDao: CardioDetailDao
@@ -43,6 +47,10 @@ class WorkoutRepositoryImpl @Inject constructor(
         workoutDao.getAllExerciseNames()
 
     override suspend fun createWorkout(workout: Workout): Long {
+        return database.withTransaction { createWorkoutInternal(workout) }
+    }
+
+    private suspend fun createWorkoutInternal(workout: Workout): Long {
         val workoutEntity = workout.toEntity()
         val workoutId = workoutDao.insertWorkout(workoutEntity)
         workout.exercises.forEachIndexed { index, exercise ->
@@ -56,6 +64,10 @@ class WorkoutRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateWorkout(workout: Workout) {
+        database.withTransaction { updateWorkoutInternal(workout) }
+    }
+
+    private suspend fun updateWorkoutInternal(workout: Workout) {
         workoutDao.updateWorkout(workout.toEntity())
         exerciseDao.deleteByWorkoutId(workout.id)
         workout.exercises.forEachIndexed { index, exercise ->
@@ -98,30 +110,39 @@ class WorkoutRepositoryImpl @Inject constructor(
     override suspend fun getMostRecentWorkoutOnce(): Workout? =
         workoutDao.getMostRecentWorkoutOnce()?.toDomain()
 
-    override suspend fun saveWorkout(workout: Workout): Long {
-        val existing = workoutDao.getWorkoutByDate(workout.date)
-        return if (existing != null) {
-            // Merge: append exercises to existing workout
-            val existingDomain = existing.toDomain()
-            val startSortOrder = existingDomain.exercises.maxOfOrNull { it.sortOrder + 1 } ?: 0
-            val mergedExercises = existingDomain.exercises +
-                workout.exercises.mapIndexed { i, ex ->
-                    ex.copy(sortOrder = startSortOrder + i)
+    override suspend fun saveWorkout(workout: Workout, mode: SameDayWriteMode): Long =
+        database.withTransaction {
+            val existing = workoutDao.getWorkoutByDate(workout.date)?.toDomain()
+            if (existing == null) {
+                createWorkoutInternal(workout)
+            } else {
+                val saved = when (mode) {
+                    SameDayWriteMode.APPEND -> {
+                        val nextOrder = existing.exercises.maxOfOrNull { it.sortOrder + 1 } ?: 0
+                        existing.copy(
+                            exercises = existing.exercises + workout.exercises.mapIndexed { index, exercise ->
+                                exercise.copy(id = 0, workoutId = existing.id, sortOrder = nextOrder + index)
+                            },
+                            aiSummary = mergeText(existing.aiSummary, workout.aiSummary, "\n---\n"),
+                            rawTranscript = mergeText(existing.rawTranscript, workout.rawTranscript, "\n"),
+                            audioFilePath = workout.audioFilePath ?: existing.audioFilePath,
+                            updatedAt = java.time.Instant.now()
+                        )
+                    }
+                    SameDayWriteMode.OVERWRITE -> workout.copy(
+                        id = existing.id,
+                        syncId = existing.syncId,
+                        createdAt = existing.createdAt,
+                        updatedAt = java.time.Instant.now(),
+                        exercises = workout.exercises.mapIndexed { index, exercise ->
+                            exercise.copy(id = 0, workoutId = existing.id, sortOrder = index)
+                        }
+                    )
                 }
-            val merged = existingDomain.copy(
-                exercises = mergedExercises,
-                // Concatenate summaries if new content provided
-                aiSummary = listOfNotNull(existingDomain.aiSummary, workout.aiSummary)
-                    .filter { it.isNotBlank() }
-                    .joinToString("\n---\n"),
-                updatedAt = java.time.Instant.now()
-            )
-            updateWorkout(merged)
-            existing.workout.id
-        } else {
-            createWorkout(workout)
+                updateWorkoutInternal(saved)
+                existing.id
+            }
         }
-    }
 
     override suspend fun insertWorkouts(workouts: List<Workout>) {
         workouts.forEach { createWorkout(it) }
@@ -129,4 +150,9 @@ class WorkoutRepositoryImpl @Inject constructor(
 
     override suspend fun getWorkoutByIdOnce(id: Long): Workout? =
         workoutDao.getWorkoutByIdOnce(id)?.toDomain()
+
+    private fun mergeText(first: String?, second: String?, separator: String): String? =
+        listOfNotNull(first?.takeIf { it.isNotBlank() }, second?.takeIf { it.isNotBlank() })
+            .takeIf { it.isNotEmpty() }
+            ?.joinToString(separator)
 }

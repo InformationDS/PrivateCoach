@@ -15,6 +15,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.privatecoach.app.core.model.ChartType
 import com.privatecoach.app.core.model.Message
+import com.privatecoach.app.core.model.ChartData
+import com.privatecoach.app.ui.component.ChartBar
+import com.privatecoach.app.ui.component.ChartLine
+import com.privatecoach.app.ui.component.ChartSegment
+import com.privatecoach.app.ui.component.PcBarChart
+import com.privatecoach.app.ui.component.PcLineChart
+import com.privatecoach.app.ui.component.PcPieChart
+import com.privatecoach.app.ui.component.ChartLineColors
+import com.privatecoach.app.ui.component.getBodyPartColor
 import com.privatecoach.app.ui.theme.PcAccentCopper
 import com.privatecoach.app.ui.theme.PcDivider
 import com.privatecoach.app.ui.theme.PcShapes
@@ -40,15 +49,18 @@ fun ChartCard(message: Message.ChartCard) {
         HorizontalDivider(color = PcDivider, thickness = 1.dp)
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Chart placeholder — actual chart rendering happens in ChartCard
-        // via the ConversationScreen which renders PcLineChart/PcBarChart/PcPieChart
-        // based on chartData passed through state
-        Text(
-            text = "[图表区域]",
-            color = PcTextSecondary,
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(vertical = 24.dp)
-        )
+        when (val data = message.chartData) {
+            is ChartData.Line -> PcLineChart(
+                lines = listOf(ChartLine(data.seriesLabel, data.values, ChartLineColors.first())),
+                xAxisLabels = data.labels,
+                showLegend = false
+            )
+            is ChartData.Bars -> PcBarChart(data.labels.zip(data.values).map { ChartBar(it.first, it.second) })
+            is ChartData.Pie -> PcPieChart(data.labels.zip(data.values).map {
+                ChartSegment(it.first, it.second, getBodyPartColor(it.first))
+            })
+            null -> Text("暂无图表数据", color = PcTextSecondary, style = MaterialTheme.typography.bodySmall)
+        }
 
         Spacer(modifier = Modifier.height(8.dp))
 

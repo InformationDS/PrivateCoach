@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.input.VisualTransformation
 import com.privatecoach.app.ui.theme.PcAccentCopper
 import com.privatecoach.app.ui.theme.PcBackground
 import com.privatecoach.app.ui.theme.PcDivider
@@ -27,7 +28,8 @@ fun PcTextField(
     placeholder: String = "",
     singleLine: Boolean = true,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
-    trailingIcon: @Composable (() -> Unit)? = null
+    trailingIcon: @Composable (() -> Unit)? = null,
+    visualTransformation: VisualTransformation = VisualTransformation.None
 ) {
     TextField(
         value = value,
@@ -44,6 +46,7 @@ fun PcTextField(
         singleLine = singleLine,
         keyboardOptions = keyboardOptions,
         trailingIcon = trailingIcon,
+        visualTransformation = visualTransformation,
         colors = TextFieldDefaults.colors(
             focusedTextColor = MaterialTheme.colorScheme.onBackground,
             unfocusedTextColor = MaterialTheme.colorScheme.onBackground,

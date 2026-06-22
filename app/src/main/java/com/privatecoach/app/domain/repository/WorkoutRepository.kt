@@ -5,6 +5,7 @@ import com.privatecoach.app.core.model.ExerciseTrendPoint
 import com.privatecoach.app.core.model.TrainingFrequencyPoint
 import com.privatecoach.app.core.model.VolumeDataPoint
 import com.privatecoach.app.core.model.Workout
+import com.privatecoach.app.core.model.SameDayWriteMode
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
 
@@ -18,7 +19,7 @@ interface WorkoutRepository {
 
     suspend fun getAllWorkoutsOnce(): List<Workout>
     suspend fun getMostRecentWorkoutOnce(): Workout?
-    suspend fun saveWorkout(workout: Workout): Long
+    suspend fun saveWorkout(workout: Workout, mode: SameDayWriteMode = SameDayWriteMode.APPEND): Long
     suspend fun createWorkout(workout: Workout): Long
     suspend fun updateWorkout(workout: Workout)
     suspend fun deleteWorkout(workoutId: Long)
